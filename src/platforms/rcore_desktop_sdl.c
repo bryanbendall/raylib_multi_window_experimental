@@ -216,7 +216,7 @@ static const KeyboardKey ScancodeToKey[SCANCODE_MAPPED_NUM] = {
     KEY_RIGHT_SHIFT,    //SDL_SCANCODE_RSHIFT
     KEY_RIGHT_ALT,      //SDL_SCANCODE_RALT
     KEY_RIGHT_SUPER     //SDL_SCANCODE_RGUI
-};platform[GetActiveWindowContext()].
+};
 
 static const int CursorsLUT[] = {
     SDL_SYSTEM_CURSOR_ARROW,       // 0  MOUSE_CURSOR_DEFAULT
