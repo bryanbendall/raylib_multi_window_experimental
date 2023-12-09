@@ -347,7 +347,21 @@ typedef struct CoreData {
 //----------------------------------------------------------------------------------
 RLAPI const char *raylib_version = RAYLIB_VERSION;  // raylib version exported symbol, required for some bindings
 
-CoreData CORE = { 0 };               // Global CORE state context
+
+int numWindows = 0;
+int activeWindowContext = -1;
+
+extern bool SupportMultiWindow();
+
+int GetActiveWindowContext()
+{
+    if (!SupportMultiWindow())
+        return 0;
+
+    return activeWindowContext;
+}
+
+CoreData CORE[MAX_WINDOWS] = {0};               // Global CORE state context
 
 #if defined(SUPPORT_SCREEN_CAPTURE)
 static int screenshotCounter = 0;    // Screenshots counter
@@ -543,10 +557,37 @@ const char *TextFormat(const char *text, ...);              // Formatting of tex
 //void EnableCursor(void)
 //void DisableCursor(void)
 
+
+RLAPI int SetActiveWindowContext(int windowId)
+{
+    if (!SupportMultiWindow())
+        return 0;
+
+    if (windowId <= 0 || windowId >= numWindows)
+        return -1;
+
+    activeWindowContext = windowId;
+    return activeWindowContext;
+}
+
 // Initialize window and OpenGL context
 // NOTE: data parameter could be used to pass any kind of required data to the initialization
-void InitWindow(int width, int height, const char *title)
+void InitWindow(int width, int height, const char* title)
 {
+    if (numWindows > 0)
+        return;
+
+    InitWindowPro(width, height, title);
+}
+
+int InitWindowPro(int width, int height, const char* title)
+{
+    if (numWindows <= 1 && !SupportMultiWindow() || numWindows == MAX_WINDOWS)
+        return -1;
+
+    activeWindowContext = numWindows;
+    numWindows++;
+
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
 
 #if defined(PLATFORM_DESKTOP)
@@ -595,18 +636,18 @@ void InitWindow(int width, int height, const char *title)
 #endif
 
     // Initialize window data
-    CORE.Window.screen.width = width;
-    CORE.Window.screen.height = height;
-    CORE.Window.eventWaiting = false;
-    CORE.Window.screenScale = MatrixIdentity();     // No draw scaling required by default
-    if ((title != NULL) && (title[0] != 0)) CORE.Window.title = title;
+    CORE[activeWindowContext].Window.screen.width = width;
+    CORE[activeWindowContext].Window.screen.height = height;
+    CORE[activeWindowContext].Window.eventWaiting = false;
+    CORE[activeWindowContext].Window.screenScale = MatrixIdentity();     // No draw scaling required by default
+    if ((title != NULL) && (title[0] != 0)) CORE[activeWindowContext].Window.title = title;
 
     // Initialize global input state
-    memset(&CORE.Input, 0, sizeof(CORE.Input));     // Reset CORE.Input structure to 0
-    CORE.Input.Keyboard.exitKey = KEY_ESCAPE;
-    CORE.Input.Mouse.scale = (Vector2){ 1.0f, 1.0f };
-    CORE.Input.Mouse.cursor = MOUSE_CURSOR_ARROW;
-    CORE.Input.Gamepad.lastButtonPressed = GAMEPAD_BUTTON_UNKNOWN;
+    memset(&CORE[activeWindowContext].Input, 0, sizeof(CORE[activeWindowContext].Input));     // Reset CORE[activeWindowContext].Input structure to 0
+    CORE[activeWindowContext].Input.Keyboard.exitKey = KEY_ESCAPE;
+    CORE[activeWindowContext].Input.Mouse.scale = (Vector2){ 1.0f, 1.0f };
+    CORE[activeWindowContext].Input.Mouse.cursor = MOUSE_CURSOR_ARROW;
+    CORE[activeWindowContext].Input.Gamepad.lastButtonPressed = GAMEPAD_BUTTON_UNKNOWN;
 
     // Initialize platform
     //--------------------------------------------------------------
@@ -614,11 +655,11 @@ void InitWindow(int width, int height, const char *title)
     //--------------------------------------------------------------
 
     // Initialize rlgl default data (buffers and shaders)
-    // NOTE: CORE.Window.currentFbo.width and CORE.Window.currentFbo.height not used, just stored as globals in rlgl
-    rlglInit(CORE.Window.currentFbo.width, CORE.Window.currentFbo.height);
+    // NOTE: CORE[activeWindowContext].Window.currentFbo.width and CORE[activeWindowContext].Window.currentFbo.height not used, just stored as globals in rlgl
+    rlglInit(CORE[activeWindowContext].Window.currentFbo.width, CORE[activeWindowContext].Window.currentFbo.height);
 
     // Setup default viewport
-    SetupViewport(CORE.Window.currentFbo.width, CORE.Window.currentFbo.height);
+    SetupViewport(CORE[activeWindowContext].Window.currentFbo.width, CORE[activeWindowContext].Window.currentFbo.height);
 
 #if defined(SUPPORT_MODULE_RTEXT) && defined(SUPPORT_DEFAULT_FONT)
     // Load default font
@@ -628,7 +669,7 @@ void InitWindow(int width, int height, const char *title)
     // Set font white rectangle for shapes drawing, so shapes and text can be batched together
     // WARNING: rshapes module is required, if not available, default internal white rectangle is used
     Rectangle rec = GetFontDefault().recs[95];
-    if (CORE.Window.flags & FLAG_MSAA_4X_HINT)
+    if (CORE[activeWindowContext].Window.flags & FLAG_MSAA_4X_HINT)
     {
         // NOTE: We try to maxime rec padding to avoid pixel bleeding on MSAA filtering
         SetShapesTexture(GetFontDefault().texture, (Rectangle){ rec.x + 2, rec.y + 2, 1, 1 });
@@ -648,7 +689,7 @@ void InitWindow(int width, int height, const char *title)
     #endif
 #endif
 #if defined(SUPPORT_MODULE_RTEXT) && defined(SUPPORT_DEFAULT_FONT)
-    if ((CORE.Window.flags & FLAG_WINDOW_HIGHDPI) > 0)
+    if ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_HIGHDPI) > 0)
     {
         // Set default font texture filter for HighDPI (blurry)
         // RL_TEXTURE_FILTER_LINEAR - tex filter: BILINEAR, no mipmaps
@@ -657,11 +698,13 @@ void InitWindow(int width, int height, const char *title)
     }
 #endif
 
-    CORE.Time.frameCounter = 0;
-    CORE.Window.shouldClose = false;
+    CORE[activeWindowContext].Time.frameCounter = 0;
+    CORE[activeWindowContext].Window.shouldClose = false;
 
     // Initialize random seed
     SetRandomSeed((unsigned int)time(NULL));
+
+    return GetActiveWindowContext();
 }
 
 // Close window and unload OpenGL context
@@ -687,68 +730,68 @@ void CloseWindow(void)
     ClosePlatform();
     //--------------------------------------------------------------
 
-    CORE.Window.ready = false;
+    CORE[activeWindowContext].Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
 }
 
 // Check if window has been initialized successfully
 bool IsWindowReady(void)
 {
-    return CORE.Window.ready;
+    return CORE[activeWindowContext].Window.ready;
 }
 
 // Check if window is currently fullscreen
 bool IsWindowFullscreen(void)
 {
-    return CORE.Window.fullscreen;
+    return CORE[activeWindowContext].Window.fullscreen;
 }
 
 // Check if window is currently hidden
 bool IsWindowHidden(void)
 {
-    return ((CORE.Window.flags & FLAG_WINDOW_HIDDEN) > 0);
+    return ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_HIDDEN) > 0);
 }
 
 // Check if window has been minimized
 bool IsWindowMinimized(void)
 {
-    return ((CORE.Window.flags & FLAG_WINDOW_MINIMIZED) > 0);
+    return ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_MINIMIZED) > 0);
 }
 
 // Check if window has been maximized
 bool IsWindowMaximized(void)
 {
-    return ((CORE.Window.flags & FLAG_WINDOW_MAXIMIZED) > 0);
+    return ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_MAXIMIZED) > 0);
 }
 
 // Check if window has the focus
 bool IsWindowFocused(void)
 {
-    return ((CORE.Window.flags & FLAG_WINDOW_UNFOCUSED) == 0);
+    return ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_UNFOCUSED) == 0);
 }
 
 // Check if window has been resizedLastFrame
 bool IsWindowResized(void)
 {
-    return CORE.Window.resizedLastFrame;
+    return CORE[activeWindowContext].Window.resizedLastFrame;
 }
 
 // Check if one specific window flag is enabled
 bool IsWindowState(unsigned int flag)
 {
-    return ((CORE.Window.flags & flag) > 0);
+    return ((CORE[activeWindowContext].Window.flags & flag) > 0);
 }
 
 // Get current screen width
 int GetScreenWidth(void)
 {
-    return CORE.Window.screen.width;
+    return CORE[activeWindowContext].Window.screen.width;
 }
 
 // Get current screen height
 int GetScreenHeight(void)
 {
-    return CORE.Window.screen.height;
+    return CORE[activeWindowContext].Window.screen.height;
 }
 
 // Get current render width which is equal to screen width*dpi scale
@@ -757,9 +800,9 @@ int GetRenderWidth(void)
     int width = 0;
 #if defined(__APPLE__)
     Vector2 scale = GetWindowScaleDPI();
-    width = (int)((float)CORE.Window.render.width*scale.x);
+    width = (int)((float)CORE[activeWindowContext].Window.render.width*scale.x);
 #else
-    width = CORE.Window.render.width;
+    width = CORE[activeWindowContext].Window.render.width;
 #endif
     return width;
 }
@@ -770,9 +813,9 @@ int GetRenderHeight(void)
     int height = 0;
 #if defined(__APPLE__)
     Vector2 scale = GetWindowScaleDPI();
-    height = (int)((float)CORE.Window.render.height*scale.y);
+    height = (int)((float)CORE[activeWindowContext].Window.render.height*scale.y);
 #else
-    height = CORE.Window.render.height;
+    height = CORE[activeWindowContext].Window.render.height;
 #endif
     return height;
 }
@@ -780,25 +823,25 @@ int GetRenderHeight(void)
 // Enable waiting for events on EndDrawing(), no automatic event polling
 void EnableEventWaiting(void)
 {
-    CORE.Window.eventWaiting = true;
+    CORE[activeWindowContext].Window.eventWaiting = true;
 }
 
 // Disable waiting for events on EndDrawing(), automatic events polling
 void DisableEventWaiting(void)
 {
-    CORE.Window.eventWaiting = false;
+    CORE[activeWindowContext].Window.eventWaiting = false;
 }
 
 // Check if cursor is not visible
 bool IsCursorHidden(void)
 {
-    return CORE.Input.Mouse.cursorHidden;
+    return CORE[activeWindowContext].Input.Mouse.cursorHidden;
 }
 
 // Check if cursor is on the current screen.
 bool IsCursorOnScreen(void)
 {
-    return CORE.Input.Mouse.cursorOnScreen;
+    return CORE[activeWindowContext].Input.Mouse.cursorOnScreen;
 }
 
 //----------------------------------------------------------------------------------
@@ -818,12 +861,12 @@ void BeginDrawing(void)
     // WARNING: Previously to BeginDrawing() other render textures drawing could happen,
     // consequently the measure for update vs draw is not accurate (only the total frame time is accurate)
 
-    CORE.Time.current = GetTime();      // Number of elapsed seconds since InitTimer()
-    CORE.Time.update = CORE.Time.current - CORE.Time.previous;
-    CORE.Time.previous = CORE.Time.current;
+    CORE[activeWindowContext].Time.current = GetTime();      // Number of elapsed seconds since InitTimer()
+    CORE[activeWindowContext].Time.update = CORE[activeWindowContext].Time.current - CORE[activeWindowContext].Time.previous;
+    CORE[activeWindowContext].Time.previous = CORE[activeWindowContext].Time.current;
 
     rlLoadIdentity();                   // Reset current matrix (modelview)
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling
+    rlMultMatrixf(MatrixToFloat(CORE[activeWindowContext].Window.screenScale)); // Apply screen scaling
 
     //rlTranslatef(0.375, 0.375, 0);    // HACK to have 2D pixel-perfect drawing on OpenGL 1.1
                                         // NOTE: Not required with OpenGL 3.3+
@@ -847,8 +890,8 @@ void EndDrawing(void)
             // Get image data for the current frame (from backbuffer)
             // NOTE: This process is quite slow... :(
             Vector2 scale = GetWindowScaleDPI();
-            unsigned char *screenData = rlReadScreenPixels((int)((float)CORE.Window.render.width*scale.x), (int)((float)CORE.Window.render.height*scale.y));
-            msf_gif_frame(&gifState, screenData, 10, 16, (int)((float)CORE.Window.render.width*scale.x)*4);
+            unsigned char *screenData = rlReadScreenPixels((int)((float)CORE[activeWindowContext].Window.render.width*scale.x), (int)((float)CORE[activeWindowContext].Window.render.height*scale.y));
+            msf_gif_frame(&gifState, screenData, 10, 16, (int)((float)CORE[activeWindowContext].Window.render.width*scale.x)*4);
 
             RL_FREE(screenData);    // Free image data
         }
@@ -856,8 +899,8 @@ void EndDrawing(void)
     #if defined(SUPPORT_MODULE_RSHAPES) && defined(SUPPORT_MODULE_RTEXT)
         if (((gifFrameCounter/15)%2) == 1)
         {
-            DrawCircle(30, CORE.Window.screen.height - 20, 10, MAROON);                 // WARNING: Module required: rshapes
-            DrawText("GIF RECORDING", 50, CORE.Window.screen.height - 25, 10, RED);     // WARNING: Module required: rtext
+            DrawCircle(30, CORE[activeWindowContext].Window.screen.height - 20, 10, MAROON);                 // WARNING: Module required: rshapes
+            DrawText("GIF RECORDING", 50, CORE[activeWindowContext].Window.screen.height - 25, 10, RED);     // WARNING: Module required: rtext
         }
     #endif
 
@@ -873,22 +916,22 @@ void EndDrawing(void)
     SwapScreenBuffer();                  // Copy back buffer to front buffer (screen)
 
     // Frame time control system
-    CORE.Time.current = GetTime();
-    CORE.Time.draw = CORE.Time.current - CORE.Time.previous;
-    CORE.Time.previous = CORE.Time.current;
+    CORE[activeWindowContext].Time.current = GetTime();
+    CORE[activeWindowContext].Time.draw = CORE[activeWindowContext].Time.current - CORE[activeWindowContext].Time.previous;
+    CORE[activeWindowContext].Time.previous = CORE[activeWindowContext].Time.current;
 
-    CORE.Time.frame = CORE.Time.update + CORE.Time.draw;
+    CORE[activeWindowContext].Time.frame = CORE[activeWindowContext].Time.update + CORE[activeWindowContext].Time.draw;
 
     // Wait for some milliseconds...
-    if (CORE.Time.frame < CORE.Time.target)
+    if (CORE[activeWindowContext].Time.frame < CORE[activeWindowContext].Time.target)
     {
-        WaitTime(CORE.Time.target - CORE.Time.frame);
+        WaitTime(CORE[activeWindowContext].Time.target - CORE[activeWindowContext].Time.frame);
 
-        CORE.Time.current = GetTime();
-        double waitTime = CORE.Time.current - CORE.Time.previous;
-        CORE.Time.previous = CORE.Time.current;
+        CORE[activeWindowContext].Time.current = GetTime();
+        double waitTime = CORE[activeWindowContext].Time.current - CORE[activeWindowContext].Time.previous;
+        CORE[activeWindowContext].Time.previous = CORE[activeWindowContext].Time.current;
 
-        CORE.Time.frame += waitTime;    // Total frame time: update + draw + wait
+        CORE[activeWindowContext].Time.frame += waitTime;    // Total frame time: update + draw + wait
     }
 
     PollInputEvents();      // Poll user events (before next frame update)
@@ -906,7 +949,7 @@ void EndDrawing(void)
 
                 MsfGifResult result = msf_gif_end(&gifState);
 
-                SaveFileData(TextFormat("%s/screenrec%03i.gif", CORE.Storage.basePath, screenshotCounter), result.data, (unsigned int)result.dataSize);
+                SaveFileData(TextFormat("%s/screenrec%03i.gif", CORE[activeWindowContext].Storage.basePath, screenshotCounter), result.data, (unsigned int)result.dataSize);
                 msf_gif_free(result);
 
                 TRACELOG(LOG_INFO, "SYSTEM: Finish animated GIF recording");
@@ -917,7 +960,7 @@ void EndDrawing(void)
                 gifFrameCounter = 0;
 
                 Vector2 scale = GetWindowScaleDPI();
-                msf_gif_begin(&gifState, (int)((float)CORE.Window.render.width*scale.x), (int)((float)CORE.Window.render.height*scale.y));
+                msf_gif_begin(&gifState, (int)((float)CORE[activeWindowContext].Window.render.width*scale.x), (int)((float)CORE[activeWindowContext].Window.render.height*scale.y));
                 screenshotCounter++;
 
                 TRACELOG(LOG_INFO, "SYSTEM: Start animated GIF recording: %s", TextFormat("screenrec%03i.gif", screenshotCounter));
@@ -932,7 +975,7 @@ void EndDrawing(void)
     }
 #endif  // SUPPORT_SCREEN_CAPTURE
 
-    CORE.Time.frameCounter++;
+    CORE[activeWindowContext].Time.frameCounter++;
 }
 
 // Initialize 2D mode with custom camera (2D)
@@ -946,7 +989,7 @@ void BeginMode2D(Camera2D camera)
     rlMultMatrixf(MatrixToFloat(GetCameraMatrix2D(camera)));
 
     // Apply screen scaling if required
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale));
+    rlMultMatrixf(MatrixToFloat(CORE[activeWindowContext].Window.screenScale));
 }
 
 // Ends 2D mode with custom camera
@@ -955,7 +998,7 @@ void EndMode2D(void)
     rlDrawRenderBatchActive();      // Update and draw internal render batch
 
     rlLoadIdentity();               // Reset current matrix (modelview)
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+    rlMultMatrixf(MatrixToFloat(CORE[activeWindowContext].Window.screenScale)); // Apply screen scaling if required
 }
 
 // Initializes 3D mode with custom camera (3D)
@@ -967,7 +1010,7 @@ void BeginMode3D(Camera camera)
     rlPushMatrix();                 // Save previous matrix, which contains the settings for the 2d ortho projection
     rlLoadIdentity();               // Reset current matrix (projection)
 
-    float aspect = (float)CORE.Window.currentFbo.width/(float)CORE.Window.currentFbo.height;
+    float aspect = (float)CORE[activeWindowContext].Window.currentFbo.width/(float)CORE[activeWindowContext].Window.currentFbo.height;
 
     // NOTE: zNear and zFar values are important when computing depth buffer values
     if (camera.projection == CAMERA_PERSPECTIVE)
@@ -1008,7 +1051,7 @@ void EndMode3D(void)
     rlMatrixMode(RL_MODELVIEW);     // Switch back to modelview matrix
     rlLoadIdentity();               // Reset current matrix (modelview)
 
-    rlMultMatrixf(MatrixToFloat(CORE.Window.screenScale)); // Apply screen scaling if required
+    rlMultMatrixf(MatrixToFloat(CORE[activeWindowContext].Window.screenScale)); // Apply screen scaling if required
 
     rlDisableDepthTest();           // Disable DEPTH_TEST for 2D
 }
@@ -1039,9 +1082,9 @@ void BeginTextureMode(RenderTexture2D target)
 
     // Setup current width/height for proper aspect ratio
     // calculation when using BeginMode3D()
-    CORE.Window.currentFbo.width = target.texture.width;
-    CORE.Window.currentFbo.height = target.texture.height;
-    CORE.Window.usingFbo = true;
+    CORE[activeWindowContext].Window.currentFbo.width = target.texture.width;
+    CORE[activeWindowContext].Window.currentFbo.height = target.texture.height;
+    CORE[activeWindowContext].Window.usingFbo = true;
 }
 
 // Ends drawing to render texture
@@ -1052,12 +1095,12 @@ void EndTextureMode(void)
     rlDisableFramebuffer();         // Disable render target (fbo)
 
     // Set viewport to default framebuffer size
-    SetupViewport(CORE.Window.render.width, CORE.Window.render.height);
+    SetupViewport(CORE[activeWindowContext].Window.render.width, CORE[activeWindowContext].Window.render.height);
 
     // Reset current fbo to screen size
-    CORE.Window.currentFbo.width = CORE.Window.render.width;
-    CORE.Window.currentFbo.height = CORE.Window.render.height;
-    CORE.Window.usingFbo = false;
+    CORE[activeWindowContext].Window.currentFbo.width = CORE[activeWindowContext].Window.render.width;
+    CORE[activeWindowContext].Window.currentFbo.height = CORE[activeWindowContext].Window.render.height;
+    CORE[activeWindowContext].Window.usingFbo = false;
 }
 
 // Begin custom shader mode
@@ -1094,21 +1137,21 @@ void BeginScissorMode(int x, int y, int width, int height)
     rlEnableScissorTest();
 
 #if defined(__APPLE__)
-    if (!CORE.Window.usingFbo)
+    if (!CORE[activeWindowContext].Window.usingFbo)
     {
         Vector2 scale = GetWindowScaleDPI();
         rlScissor((int)(x*scale.x), (int)(GetScreenHeight()*scale.y - (((y + height)*scale.y))), (int)(width*scale.x), (int)(height*scale.y));
     }
 #else
-    if (!CORE.Window.usingFbo && ((CORE.Window.flags & FLAG_WINDOW_HIGHDPI) > 0))
+    if (!CORE[activeWindowContext].Window.usingFbo && ((CORE[activeWindowContext].Window.flags & FLAG_WINDOW_HIGHDPI) > 0))
     {
         Vector2 scale = GetWindowScaleDPI();
-        rlScissor((int)(x*scale.x), (int)(CORE.Window.currentFbo.height - (y + height)*scale.y), (int)(width*scale.x), (int)(height*scale.y));
+        rlScissor((int)(x*scale.x), (int)(CORE[activeWindowContext].Window.currentFbo.height - (y + height)*scale.y), (int)(width*scale.x), (int)(height*scale.y));
     }
 #endif
     else
     {
-        rlScissor(x, CORE.Window.currentFbo.height - (y + height), width, height);
+        rlScissor(x, CORE[activeWindowContext].Window.currentFbo.height - (y + height), width, height);
     }
 }
 
@@ -1216,7 +1259,7 @@ VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device)
 // Unload VR stereo config properties
 void UnloadVrStereoConfig(VrStereoConfig config)
 {
-    TRACELOG(LOG_INFO, "UnloadVrStereoConfig not implemented in rcore.c");
+    TRACELOG(LOG_INFO, "UnloadVrStereoConfig not implemented in rCORE[activeWindowContext].c");
 }
 
 //----------------------------------------------------------------------------------
@@ -1418,7 +1461,7 @@ Ray GetMouseRay(Vector2 mouse, Camera camera)
     }
     else if (camera.projection == CAMERA_ORTHOGRAPHIC)
     {
-        double aspect = (double)CORE.Window.screen.width/(double)CORE.Window.screen.height;
+        double aspect = (double)CORE[activeWindowContext].Window.screen.width/(double)CORE[activeWindowContext].Window.screen.height;
         double top = camera.fovy/2.0;
         double right = top*aspect;
 
@@ -1561,10 +1604,10 @@ Vector2 GetScreenToWorld2D(Vector2 position, Camera2D camera)
 // Set target FPS (maximum)
 void SetTargetFPS(int fps)
 {
-    if (fps < 1) CORE.Time.target = 0.0;
-    else CORE.Time.target = 1.0/(double)fps;
+    if (fps < 1) CORE[activeWindowContext].Time.target = 0.0;
+    else CORE[activeWindowContext].Time.target = 1.0/(double)fps;
 
-    TRACELOG(LOG_INFO, "TIMER: Target time per frame: %02.03f milliseconds", (float)CORE.Time.target*1000.0f);
+    TRACELOG(LOG_INFO, "TIMER: Target time per frame: %02.03f milliseconds", (float)CORE[activeWindowContext].Time.target*1000.0f);
 }
 
 // Get current FPS
@@ -1584,7 +1627,7 @@ int GetFPS(void)
     float fpsFrame = GetFrameTime();
 
     // if we reset the window, reset the FPS info
-    if (CORE.Time.frameCounter == 0)
+    if (CORE[activeWindowContext].Time.frameCounter == 0)
     {
         average = 0;
         last = 0;
@@ -1613,7 +1656,7 @@ int GetFPS(void)
 // Get time in seconds for last frame drawn (delta time)
 float GetFrameTime(void)
 {
-    return (float)CORE.Time.frame;
+    return (float)CORE[activeWindowContext].Time.frame;
 }
 
 //----------------------------------------------------------------------------------
@@ -1775,11 +1818,11 @@ void TakeScreenshot(const char *fileName)
     if (strchr(fileName, '\'') != NULL) { TRACELOG(LOG_WARNING, "SYSTEM: Provided fileName could be potentially malicious, avoid [\'] character"); return; }
 
     Vector2 scale = GetWindowScaleDPI();
-    unsigned char *imgData = rlReadScreenPixels((int)((float)CORE.Window.render.width*scale.x), (int)((float)CORE.Window.render.height*scale.y));
-    Image image = { imgData, (int)((float)CORE.Window.render.width*scale.x), (int)((float)CORE.Window.render.height*scale.y), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
+    unsigned char *imgData = rlReadScreenPixels((int)((float)CORE[activeWindowContext].Window.render.width*scale.x), (int)((float)CORE[activeWindowContext].Window.render.height*scale.y));
+    Image image = { imgData, (int)((float)CORE[activeWindowContext].Window.render.width*scale.x), (int)((float)CORE[activeWindowContext].Window.render.height*scale.y), 1, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 };
 
     char path[512] = { 0 };
-    strcpy(path, TextFormat("%s/%s", CORE.Storage.basePath, GetFileName(fileName)));
+    strcpy(path, TextFormat("%s/%s", CORE[activeWindowContext].Storage.basePath, GetFileName(fileName)));
     
     ExportImage(image, path);           // WARNING: Module required: rtextures
     RL_FREE(imgData);
@@ -1799,7 +1842,7 @@ void SetConfigFlags(unsigned int flags)
 {
     // Selected flags are set but not evaluated at this point,
     // flag evaluation happens at InitWindow() or SetWindowState()
-    CORE.Window.flags |= flags;
+    CORE[activeWindowContext].Window.flags |= flags;
 }
 
 //----------------------------------------------------------------------------------
@@ -2204,7 +2247,7 @@ bool IsPathFile(const char *path)
 // Check if a file has been dropped into window
 bool IsFileDropped(void)
 {
-    if (CORE.Window.dropFileCount > 0) return true;
+    if (CORE[activeWindowContext].Window.dropFileCount > 0) return true;
     else return false;
 }
 
@@ -2213,8 +2256,8 @@ FilePathList LoadDroppedFiles(void)
 {
     FilePathList files = { 0 };
 
-    files.count = CORE.Window.dropFileCount;
-    files.paths = CORE.Window.dropFilepaths;
+    files.count = CORE[activeWindowContext].Window.dropFileCount;
+    files.paths = CORE[activeWindowContext].Window.dropFilepaths;
 
     return files;
 }
@@ -2230,8 +2273,8 @@ void UnloadDroppedFiles(FilePathList files)
 
         RL_FREE(files.paths);
 
-        CORE.Window.dropFileCount = 0;
-        CORE.Window.dropFilepaths = NULL;
+        CORE[activeWindowContext].Window.dropFileCount = 0;
+        CORE[activeWindowContext].Window.dropFilepaths = NULL;
     }
 }
 
@@ -2552,7 +2595,7 @@ void SetAutomationEventList(AutomationEventList *list)
 // Set automation event internal base frame to start recording
 void SetAutomationEventBaseFrame(int frame)
 {
-    CORE.Time.frameCounter = frame;
+    CORE[activeWindowContext].Time.frameCounter = frame;
 }
 
 // Start recording automation events (AutomationEventList must be set)
@@ -2582,52 +2625,52 @@ void PlayAutomationEvent(AutomationEvent event)
         switch (event.type)
         {
             // Input event
-            case INPUT_KEY_UP: CORE.Input.Keyboard.currentKeyState[event.params[0]] = false; break;             // param[0]: key
+            case INPUT_KEY_UP: CORE[activeWindowContext].Input.Keyboard.currentKeyState[event.params[0]] = false; break;             // param[0]: key
             case INPUT_KEY_DOWN: {                                                                              // param[0]: key
-                CORE.Input.Keyboard.currentKeyState[event.params[0]] = true;
+                CORE[activeWindowContext].Input.Keyboard.currentKeyState[event.params[0]] = true;
 
-                if (CORE.Input.Keyboard.previousKeyState[event.params[0]] == false)
+                if (CORE[activeWindowContext].Input.Keyboard.previousKeyState[event.params[0]] == false)
                 {
-                    if (CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE)
+                    if (CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE)
                     {
                         // Add character to the queue
-                        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = event.params[0];
-                        CORE.Input.Keyboard.keyPressedQueueCount++;
+                        CORE[activeWindowContext].Input.Keyboard.keyPressedQueue[CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount] = event.params[0];
+                        CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount++;
                     }
                 }
             } break;
-            case INPUT_MOUSE_BUTTON_UP: CORE.Input.Mouse.currentButtonState[event.params[0]] = false; break;    // param[0]: key
-            case INPUT_MOUSE_BUTTON_DOWN: CORE.Input.Mouse.currentButtonState[event.params[0]] = true; break;   // param[0]: key
+            case INPUT_MOUSE_BUTTON_UP: CORE[activeWindowContext].Input.Mouse.currentButtonState[event.params[0]] = false; break;    // param[0]: key
+            case INPUT_MOUSE_BUTTON_DOWN: CORE[activeWindowContext].Input.Mouse.currentButtonState[event.params[0]] = true; break;   // param[0]: key
             case INPUT_MOUSE_POSITION:      // param[0]: x, param[1]: y
             {
-                CORE.Input.Mouse.currentPosition.x = (float)event.params[0];
-                CORE.Input.Mouse.currentPosition.y = (float)event.params[1];
+                CORE[activeWindowContext].Input.Mouse.currentPosition.x = (float)event.params[0];
+                CORE[activeWindowContext].Input.Mouse.currentPosition.y = (float)event.params[1];
             } break;
             case INPUT_MOUSE_WHEEL_MOTION:  // param[0]: x delta, param[1]: y delta
             {
-                CORE.Input.Mouse.currentWheelMove.x = (float)event.params[0]; break;
-                CORE.Input.Mouse.currentWheelMove.y = (float)event.params[1]; break;
+                CORE[activeWindowContext].Input.Mouse.currentWheelMove.x = (float)event.params[0]; break;
+                CORE[activeWindowContext].Input.Mouse.currentWheelMove.y = (float)event.params[1]; break;
             } break;
-            case INPUT_TOUCH_UP: CORE.Input.Touch.currentTouchState[event.params[0]] = false; break;            // param[0]: id
-            case INPUT_TOUCH_DOWN: CORE.Input.Touch.currentTouchState[event.params[0]] = true; break;           // param[0]: id
+            case INPUT_TOUCH_UP: CORE[activeWindowContext].Input.Touch.currentTouchState[event.params[0]] = false; break;            // param[0]: id
+            case INPUT_TOUCH_DOWN: CORE[activeWindowContext].Input.Touch.currentTouchState[event.params[0]] = true; break;           // param[0]: id
             case INPUT_TOUCH_POSITION:      // param[0]: id, param[1]: x, param[2]: y
             {
-                CORE.Input.Touch.position[event.params[0]].x = (float)event.params[1];
-                CORE.Input.Touch.position[event.params[0]].y = (float)event.params[2];
+                CORE[activeWindowContext].Input.Touch.position[event.params[0]].x = (float)event.params[1];
+                CORE[activeWindowContext].Input.Touch.position[event.params[0]].y = (float)event.params[2];
             } break;
-            case INPUT_GAMEPAD_CONNECT: CORE.Input.Gamepad.ready[event.params[0]] = true; break;                // param[0]: gamepad
-            case INPUT_GAMEPAD_DISCONNECT: CORE.Input.Gamepad.ready[event.params[0]] = false; break;            // param[0]: gamepad
-            case INPUT_GAMEPAD_BUTTON_UP: CORE.Input.Gamepad.currentButtonState[event.params[0]][event.params[1]] = false; break;    // param[0]: gamepad, param[1]: button
-            case INPUT_GAMEPAD_BUTTON_DOWN: CORE.Input.Gamepad.currentButtonState[event.params[0]][event.params[1]] = true; break;   // param[0]: gamepad, param[1]: button
+            case INPUT_GAMEPAD_CONNECT: CORE[activeWindowContext].Input.Gamepad.ready[event.params[0]] = true; break;                // param[0]: gamepad
+            case INPUT_GAMEPAD_DISCONNECT: CORE[activeWindowContext].Input.Gamepad.ready[event.params[0]] = false; break;            // param[0]: gamepad
+            case INPUT_GAMEPAD_BUTTON_UP: CORE[activeWindowContext].Input.Gamepad.currentButtonState[event.params[0]][event.params[1]] = false; break;    // param[0]: gamepad, param[1]: button
+            case INPUT_GAMEPAD_BUTTON_DOWN: CORE[activeWindowContext].Input.Gamepad.currentButtonState[event.params[0]][event.params[1]] = true; break;   // param[0]: gamepad, param[1]: button
             case INPUT_GAMEPAD_AXIS_MOTION: // param[0]: gamepad, param[1]: axis, param[2]: delta
             {
-                CORE.Input.Gamepad.axisState[event.params[0]][event.params[1]] = ((float)event.params[2]/32768.0f);
+                CORE[activeWindowContext].Input.Gamepad.axisState[event.params[0]][event.params[1]] = ((float)event.params[2]/32768.0f);
             } break;
     #if defined(SUPPORT_GESTURES_SYSTEM)
             case INPUT_GESTURE: GESTURES.current = event.params[0]; break;     // param[0]: gesture (enum Gesture) -> rgestures.h: GESTURES.current
     #endif
             // Window event
-            case WINDOW_CLOSE: CORE.Window.shouldClose = true; break;
+            case WINDOW_CLOSE: CORE[activeWindowContext].Window.shouldClose = true; break;
             case WINDOW_MAXIMIZE: MaximizeWindow(); break;
             case WINDOW_MINIMIZE: MinimizeWindow(); break;
             case WINDOW_RESIZE: SetWindowSize(event.params[0], event.params[1]); break;
@@ -2659,7 +2702,7 @@ bool IsKeyPressed(int key)
 
     if ((key > 0) && (key < MAX_KEYBOARD_KEYS))
     {
-        if ((CORE.Input.Keyboard.previousKeyState[key] == 0) && (CORE.Input.Keyboard.currentKeyState[key] == 1)) pressed = true;
+        if ((CORE[activeWindowContext].Input.Keyboard.previousKeyState[key] == 0) && (CORE[activeWindowContext].Input.Keyboard.currentKeyState[key] == 1)) pressed = true;
     }
 
     return pressed;
@@ -2672,7 +2715,7 @@ bool IsKeyPressedRepeat(int key)
 
     if ((key > 0) && (key < MAX_KEYBOARD_KEYS))
     {
-        if (CORE.Input.Keyboard.keyRepeatInFrame[key] == 1) repeat = true;
+        if (CORE[activeWindowContext].Input.Keyboard.keyRepeatInFrame[key] == 1) repeat = true;
     }
 
     return repeat;
@@ -2685,7 +2728,7 @@ bool IsKeyDown(int key)
 
     if ((key > 0) && (key < MAX_KEYBOARD_KEYS))
     {
-        if (CORE.Input.Keyboard.currentKeyState[key] == 1) down = true;
+        if (CORE[activeWindowContext].Input.Keyboard.currentKeyState[key] == 1) down = true;
     }
 
     return down;
@@ -2698,7 +2741,7 @@ bool IsKeyReleased(int key)
 
     if ((key > 0) && (key < MAX_KEYBOARD_KEYS))
     {
-        if ((CORE.Input.Keyboard.previousKeyState[key] == 1) && (CORE.Input.Keyboard.currentKeyState[key] == 0)) released = true;
+        if ((CORE[activeWindowContext].Input.Keyboard.previousKeyState[key] == 1) && (CORE[activeWindowContext].Input.Keyboard.currentKeyState[key] == 0)) released = true;
     }
 
     return released;
@@ -2711,7 +2754,7 @@ bool IsKeyUp(int key)
 
     if ((key > 0) && (key < MAX_KEYBOARD_KEYS))
     {
-        if (CORE.Input.Keyboard.currentKeyState[key] == 0) up = true;
+        if (CORE[activeWindowContext].Input.Keyboard.currentKeyState[key] == 0) up = true;
     }
 
     return up;
@@ -2722,18 +2765,18 @@ int GetKeyPressed(void)
 {
     int value = 0;
 
-    if (CORE.Input.Keyboard.keyPressedQueueCount > 0)
+    if (CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount > 0)
     {
         // Get character from the queue head
-        value = CORE.Input.Keyboard.keyPressedQueue[0];
+        value = CORE[activeWindowContext].Input.Keyboard.keyPressedQueue[0];
 
         // Shift elements 1 step toward the head
-        for (int i = 0; i < (CORE.Input.Keyboard.keyPressedQueueCount - 1); i++)
-            CORE.Input.Keyboard.keyPressedQueue[i] = CORE.Input.Keyboard.keyPressedQueue[i + 1];
+        for (int i = 0; i < (CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount - 1); i++)
+            CORE[activeWindowContext].Input.Keyboard.keyPressedQueue[i] = CORE[activeWindowContext].Input.Keyboard.keyPressedQueue[i + 1];
 
         // Reset last character in the queue
-        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount - 1] = 0;
-        CORE.Input.Keyboard.keyPressedQueueCount--;
+        CORE[activeWindowContext].Input.Keyboard.keyPressedQueue[CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount - 1] = 0;
+        CORE[activeWindowContext].Input.Keyboard.keyPressedQueueCount--;
     }
 
     return value;
@@ -2744,18 +2787,18 @@ int GetCharPressed(void)
 {
     int value = 0;
 
-    if (CORE.Input.Keyboard.charPressedQueueCount > 0)
+    if (CORE[activeWindowContext].Input.Keyboard.charPressedQueueCount > 0)
     {
         // Get character from the queue head
-        value = CORE.Input.Keyboard.charPressedQueue[0];
+        value = CORE[activeWindowContext].Input.Keyboard.charPressedQueue[0];
 
         // Shift elements 1 step toward the head
-        for (int i = 0; i < (CORE.Input.Keyboard.charPressedQueueCount - 1); i++)
-            CORE.Input.Keyboard.charPressedQueue[i] = CORE.Input.Keyboard.charPressedQueue[i + 1];
+        for (int i = 0; i < (CORE[activeWindowContext].Input.Keyboard.charPressedQueueCount - 1); i++)
+            CORE[activeWindowContext].Input.Keyboard.charPressedQueue[i] = CORE[activeWindowContext].Input.Keyboard.charPressedQueue[i + 1];
 
         // Reset last character in the queue
-        CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount - 1] = 0;
-        CORE.Input.Keyboard.charPressedQueueCount--;
+        CORE[activeWindowContext].Input.Keyboard.charPressedQueue[CORE[activeWindowContext].Input.Keyboard.charPressedQueueCount - 1] = 0;
+        CORE[activeWindowContext].Input.Keyboard.charPressedQueueCount--;
     }
 
     return value;
@@ -2765,7 +2808,7 @@ int GetCharPressed(void)
 // NOTE: default exitKey is set to ESCAPE
 void SetExitKey(int key)
 {
-    CORE.Input.Keyboard.exitKey = key;
+    CORE[activeWindowContext].Input.Keyboard.exitKey = key;
 }
 
 //----------------------------------------------------------------------------------
@@ -2780,7 +2823,7 @@ bool IsGamepadAvailable(int gamepad)
 {
     bool result = false;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad]) result = true;
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad]) result = true;
 
     return result;
 }
@@ -2788,7 +2831,7 @@ bool IsGamepadAvailable(int gamepad)
 // Get gamepad internal name id
 const char *GetGamepadName(int gamepad)
 {
-    return CORE.Input.Gamepad.name[gamepad];
+    return CORE[activeWindowContext].Input.Gamepad.name[gamepad];
 }
 
 // Check if a gamepad button has been pressed once
@@ -2796,8 +2839,8 @@ bool IsGamepadButtonPressed(int gamepad, int button)
 {
     bool pressed = false;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
-        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 0) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) pressed = true;
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE[activeWindowContext].Input.Gamepad.previousButtonState[gamepad][button] == 0) && (CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button] == 1)) pressed = true;
 
     return pressed;
 }
@@ -2807,8 +2850,8 @@ bool IsGamepadButtonDown(int gamepad, int button)
 {
     bool down = false;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
-        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 1)) down = true;
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button] == 1)) down = true;
 
     return down;
 }
@@ -2818,8 +2861,8 @@ bool IsGamepadButtonReleased(int gamepad, int button)
 {
     bool released = false;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
-        (CORE.Input.Gamepad.previousButtonState[gamepad][button] == 1) && (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) released = true;
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE[activeWindowContext].Input.Gamepad.previousButtonState[gamepad][button] == 1) && (CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button] == 0)) released = true;
 
     return released;
 }
@@ -2829,8 +2872,8 @@ bool IsGamepadButtonUp(int gamepad, int button)
 {
     bool up = false;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
-        (CORE.Input.Gamepad.currentButtonState[gamepad][button] == 0)) up = true;
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad] && (button < MAX_GAMEPAD_BUTTONS) &&
+        (CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button] == 0)) up = true;
 
     return up;
 }
@@ -2838,13 +2881,13 @@ bool IsGamepadButtonUp(int gamepad, int button)
 // Get the last gamepad button pressed
 int GetGamepadButtonPressed(void)
 {
-    return CORE.Input.Gamepad.lastButtonPressed;
+    return CORE[activeWindowContext].Input.Gamepad.lastButtonPressed;
 }
 
 // Get gamepad axis count
 int GetGamepadAxisCount(int gamepad)
 {
-    return CORE.Input.Gamepad.axisCount[gamepad];
+    return CORE[activeWindowContext].Input.Gamepad.axisCount[gamepad];
 }
 
 // Get axis movement vector for a gamepad
@@ -2852,8 +2895,8 @@ float GetGamepadAxisMovement(int gamepad, int axis)
 {
     float value = 0;
 
-    if ((gamepad < MAX_GAMEPADS) && CORE.Input.Gamepad.ready[gamepad] && (axis < MAX_GAMEPAD_AXIS) &&
-        (fabsf(CORE.Input.Gamepad.axisState[gamepad][axis]) > 0.1f)) value = CORE.Input.Gamepad.axisState[gamepad][axis];      // 0.1f = GAMEPAD_AXIS_MINIMUM_DRIFT/DELTA
+    if ((gamepad < MAX_GAMEPADS) && CORE[activeWindowContext].Input.Gamepad.ready[gamepad] && (axis < MAX_GAMEPAD_AXIS) &&
+        (fabsf(CORE[activeWindowContext].Input.Gamepad.axisState[gamepad][axis]) > 0.1f)) value = CORE[activeWindowContext].Input.Gamepad.axisState[gamepad][axis];      // 0.1f = GAMEPAD_AXIS_MINIMUM_DRIFT/DELTA
 
     return value;
 }
@@ -2871,10 +2914,10 @@ bool IsMouseButtonPressed(int button)
 {
     bool pressed = false;
 
-    if ((CORE.Input.Mouse.currentButtonState[button] == 1) && (CORE.Input.Mouse.previousButtonState[button] == 0)) pressed = true;
+    if ((CORE[activeWindowContext].Input.Mouse.currentButtonState[button] == 1) && (CORE[activeWindowContext].Input.Mouse.previousButtonState[button] == 0)) pressed = true;
 
     // Map touches to mouse buttons checking
-    if ((CORE.Input.Touch.currentTouchState[button] == 1) && (CORE.Input.Touch.previousTouchState[button] == 0)) pressed = true;
+    if ((CORE[activeWindowContext].Input.Touch.currentTouchState[button] == 1) && (CORE[activeWindowContext].Input.Touch.previousTouchState[button] == 0)) pressed = true;
 
     return pressed;
 }
@@ -2884,10 +2927,10 @@ bool IsMouseButtonDown(int button)
 {
     bool down = false;
 
-    if (CORE.Input.Mouse.currentButtonState[button] == 1) down = true;
+    if (CORE[activeWindowContext].Input.Mouse.currentButtonState[button] == 1) down = true;
 
     // NOTE: Touches are considered like mouse buttons
-    if (CORE.Input.Touch.currentTouchState[button] == 1) down = true;
+    if (CORE[activeWindowContext].Input.Touch.currentTouchState[button] == 1) down = true;
 
     return down;
 }
@@ -2897,10 +2940,10 @@ bool IsMouseButtonReleased(int button)
 {
     bool released = false;
 
-    if ((CORE.Input.Mouse.currentButtonState[button] == 0) && (CORE.Input.Mouse.previousButtonState[button] == 1)) released = true;
+    if ((CORE[activeWindowContext].Input.Mouse.currentButtonState[button] == 0) && (CORE[activeWindowContext].Input.Mouse.previousButtonState[button] == 1)) released = true;
 
     // Map touches to mouse buttons checking
-    if ((CORE.Input.Touch.currentTouchState[button] == 0) && (CORE.Input.Touch.previousTouchState[button] == 1)) released = true;
+    if ((CORE[activeWindowContext].Input.Touch.currentTouchState[button] == 0) && (CORE[activeWindowContext].Input.Touch.previousTouchState[button] == 1)) released = true;
 
     return released;
 }
@@ -2910,10 +2953,10 @@ bool IsMouseButtonUp(int button)
 {
     bool up = false;
 
-    if (CORE.Input.Mouse.currentButtonState[button] == 0) up = true;
+    if (CORE[activeWindowContext].Input.Mouse.currentButtonState[button] == 0) up = true;
 
     // NOTE: Touches are considered like mouse buttons
-    if (CORE.Input.Touch.currentTouchState[button] == 0) up = true;
+    if (CORE[activeWindowContext].Input.Touch.currentTouchState[button] == 0) up = true;
 
     return up;
 }
@@ -2921,13 +2964,13 @@ bool IsMouseButtonUp(int button)
 // Get mouse position X
 int GetMouseX(void)
 {
-    return (int)((CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x);
+    return (int)((CORE[activeWindowContext].Input.Mouse.currentPosition.x + CORE[activeWindowContext].Input.Mouse.offset.x)*CORE[activeWindowContext].Input.Mouse.scale.x);
 }
 
 // Get mouse position Y
 int GetMouseY(void)
 {
-    return (int)((CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y);
+    return (int)((CORE[activeWindowContext].Input.Mouse.currentPosition.y + CORE[activeWindowContext].Input.Mouse.offset.y)*CORE[activeWindowContext].Input.Mouse.scale.y);
 }
 
 // Get mouse position XY
@@ -2935,8 +2978,8 @@ Vector2 GetMousePosition(void)
 {
     Vector2 position = { 0 };
 
-    position.x = (CORE.Input.Mouse.currentPosition.x + CORE.Input.Mouse.offset.x)*CORE.Input.Mouse.scale.x;
-    position.y = (CORE.Input.Mouse.currentPosition.y + CORE.Input.Mouse.offset.y)*CORE.Input.Mouse.scale.y;
+    position.x = (CORE[activeWindowContext].Input.Mouse.currentPosition.x + CORE[activeWindowContext].Input.Mouse.offset.x)*CORE[activeWindowContext].Input.Mouse.scale.x;
+    position.y = (CORE[activeWindowContext].Input.Mouse.currentPosition.y + CORE[activeWindowContext].Input.Mouse.offset.y)*CORE[activeWindowContext].Input.Mouse.scale.y;
 
     return position;
 }
@@ -2946,8 +2989,8 @@ Vector2 GetMouseDelta(void)
 {
     Vector2 delta = { 0 };
 
-    delta.x = CORE.Input.Mouse.currentPosition.x - CORE.Input.Mouse.previousPosition.x;
-    delta.y = CORE.Input.Mouse.currentPosition.y - CORE.Input.Mouse.previousPosition.y;
+    delta.x = CORE[activeWindowContext].Input.Mouse.currentPosition.x - CORE[activeWindowContext].Input.Mouse.previousPosition.x;
+    delta.y = CORE[activeWindowContext].Input.Mouse.currentPosition.y - CORE[activeWindowContext].Input.Mouse.previousPosition.y;
 
     return delta;
 }
@@ -2956,14 +2999,14 @@ Vector2 GetMouseDelta(void)
 // NOTE: Useful when rendering to different size targets
 void SetMouseOffset(int offsetX, int offsetY)
 {
-    CORE.Input.Mouse.offset = (Vector2){ (float)offsetX, (float)offsetY };
+    CORE[activeWindowContext].Input.Mouse.offset = (Vector2){ (float)offsetX, (float)offsetY };
 }
 
 // Set mouse scaling
 // NOTE: Useful when rendering to different size targets
 void SetMouseScale(float scaleX, float scaleY)
 {
-    CORE.Input.Mouse.scale = (Vector2){ scaleX, scaleY };
+    CORE[activeWindowContext].Input.Mouse.scale = (Vector2){ scaleX, scaleY };
 }
 
 // Get mouse wheel movement Y
@@ -2971,8 +3014,8 @@ float GetMouseWheelMove(void)
 {
     float result = 0.0f;
 
-    if (fabsf(CORE.Input.Mouse.currentWheelMove.x) > fabsf(CORE.Input.Mouse.currentWheelMove.y)) result = (float)CORE.Input.Mouse.currentWheelMove.x;
-    else result = (float)CORE.Input.Mouse.currentWheelMove.y;
+    if (fabsf(CORE[activeWindowContext].Input.Mouse.currentWheelMove.x) > fabsf(CORE[activeWindowContext].Input.Mouse.currentWheelMove.y)) result = (float)CORE[activeWindowContext].Input.Mouse.currentWheelMove.x;
+    else result = (float)CORE[activeWindowContext].Input.Mouse.currentWheelMove.y;
 
     return result;
 }
@@ -2982,7 +3025,7 @@ Vector2 GetMouseWheelMoveV(void)
 {
     Vector2 result = { 0 };
 
-    result = CORE.Input.Mouse.currentWheelMove;
+    result = CORE[activeWindowContext].Input.Mouse.currentWheelMove;
 
     return result;
 }
@@ -2994,13 +3037,13 @@ Vector2 GetMouseWheelMoveV(void)
 // Get touch position X for touch point 0 (relative to screen size)
 int GetTouchX(void)
 {
-    return (int)CORE.Input.Touch.position[0].x;
+    return (int)CORE[activeWindowContext].Input.Touch.position[0].x;
 }
 
 // Get touch position Y for touch point 0 (relative to screen size)
 int GetTouchY(void)
 {
-    return (int)CORE.Input.Touch.position[0].y;
+    return (int)CORE[activeWindowContext].Input.Touch.position[0].y;
 }
 
 // Get touch position XY for a touch point index (relative to screen size)
@@ -3009,7 +3052,7 @@ Vector2 GetTouchPosition(int index)
 {
     Vector2 position = { -1.0f, -1.0f };
 
-    if (index < MAX_TOUCH_POINTS) position = CORE.Input.Touch.position[index];
+    if (index < MAX_TOUCH_POINTS) position = CORE[activeWindowContext].Input.Touch.position[index];
     else TRACELOG(LOG_WARNING, "INPUT: Required touch point out of range (Max touch points: %i)", MAX_TOUCH_POINTS);
 
     return position;
@@ -3020,7 +3063,7 @@ int GetTouchPointId(int index)
 {
     int id = -1;
 
-    if (index < MAX_TOUCH_POINTS) id = CORE.Input.Touch.pointId[index];
+    if (index < MAX_TOUCH_POINTS) id = CORE[activeWindowContext].Input.Touch.pointId[index];
 
     return id;
 }
@@ -3028,7 +3071,7 @@ int GetTouchPointId(int index)
 // Get number of touch points
 int GetTouchPointCount(void)
 {
-    return CORE.Input.Touch.pointCount;
+    return CORE[activeWindowContext].Input.Touch.pointCount;
 }
 
 //----------------------------------------------------------------------------------
@@ -3055,28 +3098,28 @@ void InitTimer(void)
 
     if (clock_gettime(CLOCK_MONOTONIC, &now) == 0)  // Success
     {
-        CORE.Time.base = (unsigned long long int)now.tv_sec*1000000000LLU + (unsigned long long int)now.tv_nsec;
+        CORE[activeWindowContext].Time.base = (unsigned long long int)now.tv_sec*1000000000LLU + (unsigned long long int)now.tv_nsec;
     }
     else TRACELOG(LOG_WARNING, "TIMER: Hi-resolution timer not available");
 #endif
 
-    CORE.Time.previous = GetTime();     // Get time as double
+    CORE[activeWindowContext].Time.previous = GetTime();     // Get time as double
 }
 
 // Set viewport for a provided width and height
 void SetupViewport(int width, int height)
 {
-    CORE.Window.render.width = width;
-    CORE.Window.render.height = height;
+    CORE[activeWindowContext].Window.render.width = width;
+    CORE[activeWindowContext].Window.render.height = height;
 
     // Set viewport width and height
     // NOTE: We consider render size (scaled) and offset in case black bars are required and
     // render area does not match full display area (this situation is only applicable on fullscreen mode)
 #if defined(__APPLE__)
     Vector2 scale = GetWindowScaleDPI();
-    rlViewport(CORE.Window.renderOffset.x/2*scale.x, CORE.Window.renderOffset.y/2*scale.y, (CORE.Window.render.width)*scale.x, (CORE.Window.render.height)*scale.y);
+    rlViewport(CORE[activeWindowContext].Window.renderOffset.x/2*scale.x, CORE[activeWindowContext].Window.renderOffset.y/2*scale.y, (CORE[activeWindowContext].Window.render.width)*scale.x, (CORE[activeWindowContext].Window.render.height)*scale.y);
 #else
-    rlViewport(CORE.Window.renderOffset.x/2, CORE.Window.renderOffset.y/2, CORE.Window.render.width, CORE.Window.render.height);
+    rlViewport(CORE[activeWindowContext].Window.renderOffset.x/2, CORE[activeWindowContext].Window.renderOffset.y/2, CORE[activeWindowContext].Window.render.width, CORE[activeWindowContext].Window.render.height);
 #endif
 
     rlMatrixMode(RL_PROJECTION);        // Switch to projection matrix
@@ -3084,87 +3127,87 @@ void SetupViewport(int width, int height)
 
     // Set orthographic projection to current framebuffer size
     // NOTE: Configured top-left corner as (0, 0)
-    rlOrtho(0, CORE.Window.render.width, CORE.Window.render.height, 0, 0.0f, 1.0f);
+    rlOrtho(0, CORE[activeWindowContext].Window.render.width, CORE[activeWindowContext].Window.render.height, 0, 0.0f, 1.0f);
 
     rlMatrixMode(RL_MODELVIEW);         // Switch back to modelview matrix
     rlLoadIdentity();                   // Reset current matrix (modelview)
 }
 
 // Compute framebuffer size relative to screen size and display size
-// NOTE: Global variables CORE.Window.render.width/CORE.Window.render.height and CORE.Window.renderOffset.x/CORE.Window.renderOffset.y can be modified
+// NOTE: Global variables CORE[activeWindowContext].Window.render.width/CORE[activeWindowContext].Window.render.height and CORE[activeWindowContext].Window.renderOffset.x/CORE[activeWindowContext].Window.renderOffset.y can be modified
 void SetupFramebuffer(int width, int height)
 {
-    // Calculate CORE.Window.render.width and CORE.Window.render.height, we have the display size (input params) and the desired screen size (global var)
-    if ((CORE.Window.screen.width > CORE.Window.display.width) || (CORE.Window.screen.height > CORE.Window.display.height))
+    // Calculate CORE[activeWindowContext].Window.render.width and CORE[activeWindowContext].Window.render.height, we have the display size (input params) and the desired screen size (global var)
+    if ((CORE[activeWindowContext].Window.screen.width > CORE[activeWindowContext].Window.display.width) || (CORE[activeWindowContext].Window.screen.height > CORE[activeWindowContext].Window.display.height))
     {
-        TRACELOG(LOG_WARNING, "DISPLAY: Downscaling required: Screen size (%ix%i) is bigger than display size (%ix%i)", CORE.Window.screen.width, CORE.Window.screen.height, CORE.Window.display.width, CORE.Window.display.height);
+        TRACELOG(LOG_WARNING, "DISPLAY: Downscaling required: Screen size (%ix%i) is bigger than display size (%ix%i)", CORE[activeWindowContext].Window.screen.width, CORE[activeWindowContext].Window.screen.height, CORE[activeWindowContext].Window.display.width, CORE[activeWindowContext].Window.display.height);
 
         // Downscaling to fit display with border-bars
-        float widthRatio = (float)CORE.Window.display.width/(float)CORE.Window.screen.width;
-        float heightRatio = (float)CORE.Window.display.height/(float)CORE.Window.screen.height;
+        float widthRatio = (float)CORE[activeWindowContext].Window.display.width/(float)CORE[activeWindowContext].Window.screen.width;
+        float heightRatio = (float)CORE[activeWindowContext].Window.display.height/(float)CORE[activeWindowContext].Window.screen.height;
 
         if (widthRatio <= heightRatio)
         {
-            CORE.Window.render.width = CORE.Window.display.width;
-            CORE.Window.render.height = (int)round((float)CORE.Window.screen.height*widthRatio);
-            CORE.Window.renderOffset.x = 0;
-            CORE.Window.renderOffset.y = (CORE.Window.display.height - CORE.Window.render.height);
+            CORE[activeWindowContext].Window.render.width = CORE[activeWindowContext].Window.display.width;
+            CORE[activeWindowContext].Window.render.height = (int)round((float)CORE[activeWindowContext].Window.screen.height*widthRatio);
+            CORE[activeWindowContext].Window.renderOffset.x = 0;
+            CORE[activeWindowContext].Window.renderOffset.y = (CORE[activeWindowContext].Window.display.height - CORE[activeWindowContext].Window.render.height);
         }
         else
         {
-            CORE.Window.render.width = (int)round((float)CORE.Window.screen.width*heightRatio);
-            CORE.Window.render.height = CORE.Window.display.height;
-            CORE.Window.renderOffset.x = (CORE.Window.display.width - CORE.Window.render.width);
-            CORE.Window.renderOffset.y = 0;
+            CORE[activeWindowContext].Window.render.width = (int)round((float)CORE[activeWindowContext].Window.screen.width*heightRatio);
+            CORE[activeWindowContext].Window.render.height = CORE[activeWindowContext].Window.display.height;
+            CORE[activeWindowContext].Window.renderOffset.x = (CORE[activeWindowContext].Window.display.width - CORE[activeWindowContext].Window.render.width);
+            CORE[activeWindowContext].Window.renderOffset.y = 0;
         }
 
         // Screen scaling required
-        float scaleRatio = (float)CORE.Window.render.width/(float)CORE.Window.screen.width;
-        CORE.Window.screenScale = MatrixScale(scaleRatio, scaleRatio, 1.0f);
+        float scaleRatio = (float)CORE[activeWindowContext].Window.render.width/(float)CORE[activeWindowContext].Window.screen.width;
+        CORE[activeWindowContext].Window.screenScale = MatrixScale(scaleRatio, scaleRatio, 1.0f);
 
         // NOTE: We render to full display resolution!
         // We just need to calculate above parameters for downscale matrix and offsets
-        CORE.Window.render.width = CORE.Window.display.width;
-        CORE.Window.render.height = CORE.Window.display.height;
+        CORE[activeWindowContext].Window.render.width = CORE[activeWindowContext].Window.display.width;
+        CORE[activeWindowContext].Window.render.height = CORE[activeWindowContext].Window.display.height;
 
-        TRACELOG(LOG_WARNING, "DISPLAY: Downscale matrix generated, content will be rendered at (%ix%i)", CORE.Window.render.width, CORE.Window.render.height);
+        TRACELOG(LOG_WARNING, "DISPLAY: Downscale matrix generated, content will be rendered at (%ix%i)", CORE[activeWindowContext].Window.render.width, CORE[activeWindowContext].Window.render.height);
     }
-    else if ((CORE.Window.screen.width < CORE.Window.display.width) || (CORE.Window.screen.height < CORE.Window.display.height))
+    else if ((CORE[activeWindowContext].Window.screen.width < CORE[activeWindowContext].Window.display.width) || (CORE[activeWindowContext].Window.screen.height < CORE[activeWindowContext].Window.display.height))
     {
         // Required screen size is smaller than display size
-        TRACELOG(LOG_INFO, "DISPLAY: Upscaling required: Screen size (%ix%i) smaller than display size (%ix%i)", CORE.Window.screen.width, CORE.Window.screen.height, CORE.Window.display.width, CORE.Window.display.height);
+        TRACELOG(LOG_INFO, "DISPLAY: Upscaling required: Screen size (%ix%i) smaller than display size (%ix%i)", CORE[activeWindowContext].Window.screen.width, CORE[activeWindowContext].Window.screen.height, CORE[activeWindowContext].Window.display.width, CORE[activeWindowContext].Window.display.height);
 
-        if ((CORE.Window.screen.width == 0) || (CORE.Window.screen.height == 0))
+        if ((CORE[activeWindowContext].Window.screen.width == 0) || (CORE[activeWindowContext].Window.screen.height == 0))
         {
-            CORE.Window.screen.width = CORE.Window.display.width;
-            CORE.Window.screen.height = CORE.Window.display.height;
+            CORE[activeWindowContext].Window.screen.width = CORE[activeWindowContext].Window.display.width;
+            CORE[activeWindowContext].Window.screen.height = CORE[activeWindowContext].Window.display.height;
         }
 
         // Upscaling to fit display with border-bars
-        float displayRatio = (float)CORE.Window.display.width/(float)CORE.Window.display.height;
-        float screenRatio = (float)CORE.Window.screen.width/(float)CORE.Window.screen.height;
+        float displayRatio = (float)CORE[activeWindowContext].Window.display.width/(float)CORE[activeWindowContext].Window.display.height;
+        float screenRatio = (float)CORE[activeWindowContext].Window.screen.width/(float)CORE[activeWindowContext].Window.screen.height;
 
         if (displayRatio <= screenRatio)
         {
-            CORE.Window.render.width = CORE.Window.screen.width;
-            CORE.Window.render.height = (int)round((float)CORE.Window.screen.width/displayRatio);
-            CORE.Window.renderOffset.x = 0;
-            CORE.Window.renderOffset.y = (CORE.Window.render.height - CORE.Window.screen.height);
+            CORE[activeWindowContext].Window.render.width = CORE[activeWindowContext].Window.screen.width;
+            CORE[activeWindowContext].Window.render.height = (int)round((float)CORE[activeWindowContext].Window.screen.width/displayRatio);
+            CORE[activeWindowContext].Window.renderOffset.x = 0;
+            CORE[activeWindowContext].Window.renderOffset.y = (CORE[activeWindowContext].Window.render.height - CORE[activeWindowContext].Window.screen.height);
         }
         else
         {
-            CORE.Window.render.width = (int)round((float)CORE.Window.screen.height*displayRatio);
-            CORE.Window.render.height = CORE.Window.screen.height;
-            CORE.Window.renderOffset.x = (CORE.Window.render.width - CORE.Window.screen.width);
-            CORE.Window.renderOffset.y = 0;
+            CORE[activeWindowContext].Window.render.width = (int)round((float)CORE[activeWindowContext].Window.screen.height*displayRatio);
+            CORE[activeWindowContext].Window.render.height = CORE[activeWindowContext].Window.screen.height;
+            CORE[activeWindowContext].Window.renderOffset.x = (CORE[activeWindowContext].Window.render.width - CORE[activeWindowContext].Window.screen.width);
+            CORE[activeWindowContext].Window.renderOffset.y = 0;
         }
     }
     else
     {
-        CORE.Window.render.width = CORE.Window.screen.width;
-        CORE.Window.render.height = CORE.Window.screen.height;
-        CORE.Window.renderOffset.x = 0;
-        CORE.Window.renderOffset.y = 0;
+        CORE[activeWindowContext].Window.render.width = CORE[activeWindowContext].Window.screen.width;
+        CORE[activeWindowContext].Window.render.height = CORE[activeWindowContext].Window.screen.height;
+        CORE[activeWindowContext].Window.renderOffset.x = 0;
+        CORE[activeWindowContext].Window.renderOffset.y = 0;
     }
 }
 
@@ -3281,9 +3324,9 @@ static void RecordAutomationEvent(void)
     for (int key = 0; key < MAX_KEYBOARD_KEYS; key++)
     {
         // Event type: INPUT_KEY_UP (only saved once)
-        if (CORE.Input.Keyboard.previousKeyState[key] && !CORE.Input.Keyboard.currentKeyState[key])
+        if (CORE[activeWindowContext].Input.Keyboard.previousKeyState[key] && !CORE[activeWindowContext].Input.Keyboard.currentKeyState[key])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_KEY_UP;
             currentEventList->events[currentEventList->count].params[0] = key;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3296,9 +3339,9 @@ static void RecordAutomationEvent(void)
         if (currentEventList->count == currentEventList->capacity) return;    // Security check
 
         // Event type: INPUT_KEY_DOWN
-        if (CORE.Input.Keyboard.currentKeyState[key])
+        if (CORE[activeWindowContext].Input.Keyboard.currentKeyState[key])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_KEY_DOWN;
             currentEventList->events[currentEventList->count].params[0] = key;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3317,9 +3360,9 @@ static void RecordAutomationEvent(void)
     for (int button = 0; button < MAX_MOUSE_BUTTONS; button++)
     {
         // Event type: INPUT_MOUSE_BUTTON_UP
-        if (CORE.Input.Mouse.previousButtonState[button] && !CORE.Input.Mouse.currentButtonState[button])
+        if (CORE[activeWindowContext].Input.Mouse.previousButtonState[button] && !CORE[activeWindowContext].Input.Mouse.currentButtonState[button])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_MOUSE_BUTTON_UP;
             currentEventList->events[currentEventList->count].params[0] = button;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3332,9 +3375,9 @@ static void RecordAutomationEvent(void)
         if (currentEventList->count == currentEventList->capacity) return;    // Security check
 
         // Event type: INPUT_MOUSE_BUTTON_DOWN
-        if (CORE.Input.Mouse.currentButtonState[button])
+        if (CORE[activeWindowContext].Input.Mouse.currentButtonState[button])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_MOUSE_BUTTON_DOWN;
             currentEventList->events[currentEventList->count].params[0] = button;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3348,13 +3391,13 @@ static void RecordAutomationEvent(void)
     }
 
     // Event type: INPUT_MOUSE_POSITION (only saved if changed)
-    if (((int)CORE.Input.Mouse.currentPosition.x != (int)CORE.Input.Mouse.previousPosition.x) ||
-        ((int)CORE.Input.Mouse.currentPosition.y != (int)CORE.Input.Mouse.previousPosition.y))
+    if (((int)CORE[activeWindowContext].Input.Mouse.currentPosition.x != (int)CORE[activeWindowContext].Input.Mouse.previousPosition.x) ||
+        ((int)CORE[activeWindowContext].Input.Mouse.currentPosition.y != (int)CORE[activeWindowContext].Input.Mouse.previousPosition.y))
     {
-        currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+        currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
         currentEventList->events[currentEventList->count].type = INPUT_MOUSE_POSITION;
-        currentEventList->events[currentEventList->count].params[0] = (int)CORE.Input.Mouse.currentPosition.x;
-        currentEventList->events[currentEventList->count].params[1] = (int)CORE.Input.Mouse.currentPosition.y;
+        currentEventList->events[currentEventList->count].params[0] = (int)CORE[activeWindowContext].Input.Mouse.currentPosition.x;
+        currentEventList->events[currentEventList->count].params[1] = (int)CORE[activeWindowContext].Input.Mouse.currentPosition.y;
         currentEventList->events[currentEventList->count].params[2] = 0;
 
         TRACELOG(LOG_INFO, "AUTOMATION: Frame: %i | Event type: INPUT_MOUSE_POSITION | Event parameters: %i, %i, %i", currentEventList->events[currentEventList->count].frame, currentEventList->events[currentEventList->count].params[0], currentEventList->events[currentEventList->count].params[1], currentEventList->events[currentEventList->count].params[2]);
@@ -3364,13 +3407,13 @@ static void RecordAutomationEvent(void)
     }
 
     // Event type: INPUT_MOUSE_WHEEL_MOTION
-    if (((int)CORE.Input.Mouse.currentWheelMove.x != (int)CORE.Input.Mouse.previousWheelMove.x) ||
-        ((int)CORE.Input.Mouse.currentWheelMove.y != (int)CORE.Input.Mouse.previousWheelMove.y))
+    if (((int)CORE[activeWindowContext].Input.Mouse.currentWheelMove.x != (int)CORE[activeWindowContext].Input.Mouse.previousWheelMove.x) ||
+        ((int)CORE[activeWindowContext].Input.Mouse.currentWheelMove.y != (int)CORE[activeWindowContext].Input.Mouse.previousWheelMove.y))
     {
-        currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+        currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
         currentEventList->events[currentEventList->count].type = INPUT_MOUSE_WHEEL_MOTION;
-        currentEventList->events[currentEventList->count].params[0] = (int)CORE.Input.Mouse.currentWheelMove.x;
-        currentEventList->events[currentEventList->count].params[1] = (int)CORE.Input.Mouse.currentWheelMove.y;;
+        currentEventList->events[currentEventList->count].params[0] = (int)CORE[activeWindowContext].Input.Mouse.currentWheelMove.x;
+        currentEventList->events[currentEventList->count].params[1] = (int)CORE[activeWindowContext].Input.Mouse.currentWheelMove.y;;
         currentEventList->events[currentEventList->count].params[2] = 0;
 
         TRACELOG(LOG_INFO, "AUTOMATION: Frame: %i | Event type: INPUT_MOUSE_WHEEL_MOTION | Event parameters: %i, %i, %i", currentEventList->events[currentEventList->count].frame, currentEventList->events[currentEventList->count].params[0], currentEventList->events[currentEventList->count].params[1], currentEventList->events[currentEventList->count].params[2]);
@@ -3385,9 +3428,9 @@ static void RecordAutomationEvent(void)
     for (int id = 0; id < MAX_TOUCH_POINTS; id++)
     {
         // Event type: INPUT_TOUCH_UP
-        if (CORE.Input.Touch.previousTouchState[id] && !CORE.Input.Touch.currentTouchState[id])
+        if (CORE[activeWindowContext].Input.Touch.previousTouchState[id] && !CORE[activeWindowContext].Input.Touch.currentTouchState[id])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_TOUCH_UP;
             currentEventList->events[currentEventList->count].params[0] = id;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3400,9 +3443,9 @@ static void RecordAutomationEvent(void)
         if (currentEventList->count == currentEventList->capacity) return;    // Security check
 
         // Event type: INPUT_TOUCH_DOWN
-        if (CORE.Input.Touch.currentTouchState[id])
+        if (CORE[activeWindowContext].Input.Touch.currentTouchState[id])
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_TOUCH_DOWN;
             currentEventList->events[currentEventList->count].params[0] = id;
             currentEventList->events[currentEventList->count].params[1] = 0;
@@ -3417,14 +3460,14 @@ static void RecordAutomationEvent(void)
         // Event type: INPUT_TOUCH_POSITION
         // TODO: It requires the id!
         /*
-        if (((int)CORE.Input.Touch.currentPosition[id].x != (int)CORE.Input.Touch.previousPosition[id].x) ||
-            ((int)CORE.Input.Touch.currentPosition[id].y != (int)CORE.Input.Touch.previousPosition[id].y))
+        if (((int)CORE[activeWindowContext].Input.Touch.currentPosition[id].x != (int)CORE[activeWindowContext].Input.Touch.previousPosition[id].x) ||
+            ((int)CORE[activeWindowContext].Input.Touch.currentPosition[id].y != (int)CORE[activeWindowContext].Input.Touch.previousPosition[id].y))
         {
-            currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+            currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
             currentEventList->events[currentEventList->count].type = INPUT_TOUCH_POSITION;
             currentEventList->events[currentEventList->count].params[0] = id;
-            currentEventList->events[currentEventList->count].params[1] = (int)CORE.Input.Touch.currentPosition[id].x;
-            currentEventList->events[currentEventList->count].params[2] = (int)CORE.Input.Touch.currentPosition[id].y;
+            currentEventList->events[currentEventList->count].params[1] = (int)CORE[activeWindowContext].Input.Touch.currentPosition[id].x;
+            currentEventList->events[currentEventList->count].params[2] = (int)CORE[activeWindowContext].Input.Touch.currentPosition[id].y;
 
             TRACELOG(LOG_INFO, "AUTOMATION: Frame: %i | Event type: INPUT_TOUCH_POSITION | Event parameters: %i, %i, %i", currentEventList->events[currentEventList->count].frame, currentEventList->events[currentEventList->count].params[0], currentEventList->events[currentEventList->count].params[1], currentEventList->events[currentEventList->count].params[2]);
             currentEventList->count++;
@@ -3441,8 +3484,8 @@ static void RecordAutomationEvent(void)
     {
         // Event type: INPUT_GAMEPAD_CONNECT
         /*
-        if ((CORE.Input.Gamepad.currentState[gamepad] != CORE.Input.Gamepad.previousState[gamepad]) &&
-            (CORE.Input.Gamepad.currentState[gamepad])) // Check if changed to ready
+        if ((CORE[activeWindowContext].Input.Gamepad.currentState[gamepad] != CORE[activeWindowContext].Input.Gamepad.previousState[gamepad]) &&
+            (CORE[activeWindowContext].Input.Gamepad.currentState[gamepad])) // Check if changed to ready
         {
             // TODO: Save gamepad connect event
         }
@@ -3450,8 +3493,8 @@ static void RecordAutomationEvent(void)
 
         // Event type: INPUT_GAMEPAD_DISCONNECT
         /*
-        if ((CORE.Input.Gamepad.currentState[gamepad] != CORE.Input.Gamepad.previousState[gamepad]) &&
-            (!CORE.Input.Gamepad.currentState[gamepad])) // Check if changed to not-ready
+        if ((CORE[activeWindowContext].Input.Gamepad.currentState[gamepad] != CORE[activeWindowContext].Input.Gamepad.previousState[gamepad]) &&
+            (!CORE[activeWindowContext].Input.Gamepad.currentState[gamepad])) // Check if changed to not-ready
         {
             // TODO: Save gamepad disconnect event
         }
@@ -3460,9 +3503,9 @@ static void RecordAutomationEvent(void)
         for (int button = 0; button < MAX_GAMEPAD_BUTTONS; button++)
         {
             // Event type: INPUT_GAMEPAD_BUTTON_UP
-            if (CORE.Input.Gamepad.previousButtonState[gamepad][button] && !CORE.Input.Gamepad.currentButtonState[gamepad][button])
+            if (CORE[activeWindowContext].Input.Gamepad.previousButtonState[gamepad][button] && !CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button])
             {
-                currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+                currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
                 currentEventList->events[currentEventList->count].type = INPUT_GAMEPAD_BUTTON_UP;
                 currentEventList->events[currentEventList->count].params[0] = gamepad;
                 currentEventList->events[currentEventList->count].params[1] = button;
@@ -3475,9 +3518,9 @@ static void RecordAutomationEvent(void)
             if (currentEventList->count == currentEventList->capacity) return;    // Security check
 
             // Event type: INPUT_GAMEPAD_BUTTON_DOWN
-            if (CORE.Input.Gamepad.currentButtonState[gamepad][button])
+            if (CORE[activeWindowContext].Input.Gamepad.currentButtonState[gamepad][button])
             {
-                currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+                currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
                 currentEventList->events[currentEventList->count].type = INPUT_GAMEPAD_BUTTON_DOWN;
                 currentEventList->events[currentEventList->count].params[0] = gamepad;
                 currentEventList->events[currentEventList->count].params[1] = button;
@@ -3493,13 +3536,13 @@ static void RecordAutomationEvent(void)
         for (int axis = 0; axis < MAX_GAMEPAD_AXIS; axis++)
         {
             // Event type: INPUT_GAMEPAD_AXIS_MOTION
-            if (CORE.Input.Gamepad.axisState[gamepad][axis] > 0.1f)
+            if (CORE[activeWindowContext].Input.Gamepad.axisState[gamepad][axis] > 0.1f)
             {
-                currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+                currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
                 currentEventList->events[currentEventList->count].type = INPUT_GAMEPAD_AXIS_MOTION;
                 currentEventList->events[currentEventList->count].params[0] = gamepad;
                 currentEventList->events[currentEventList->count].params[1] = axis;
-                currentEventList->events[currentEventList->count].params[2] = (int)(CORE.Input.Gamepad.axisState[gamepad][axis]*32768.0f);
+                currentEventList->events[currentEventList->count].params[2] = (int)(CORE[activeWindowContext].Input.Gamepad.axisState[gamepad][axis]*32768.0f);
 
                 TRACELOG(LOG_INFO, "AUTOMATION: Frame: %i | Event type: INPUT_GAMEPAD_AXIS_MOTION | Event parameters: %i, %i, %i", currentEventList->events[currentEventList->count].frame, currentEventList->events[currentEventList->count].params[0], currentEventList->events[currentEventList->count].params[1], currentEventList->events[currentEventList->count].params[2]);
                 currentEventList->count++;
@@ -3516,7 +3559,7 @@ static void RecordAutomationEvent(void)
     if (GESTURES.current != GESTURE_NONE)
     {
         // Event type: INPUT_GESTURE
-        currentEventList->events[currentEventList->count].frame = CORE.Time.frameCounter;
+        currentEventList->events[currentEventList->count].frame = CORE[activeWindowContext].Time.frameCounter;
         currentEventList->events[currentEventList->count].type = INPUT_GESTURE;
         currentEventList->events[currentEventList->count].params[0] = GESTURES.current;
         currentEventList->events[currentEventList->count].params[1] = 0;

@@ -1051,7 +1051,12 @@ typedef void *(*rlglLoadProc)(const char *name);   // OpenGL extension functions
 // Global Variables Definition
 //----------------------------------------------------------------------------------
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
-static rlglData RLGL = { 0 };
+static rlglData RLGL[MAX_WINDOWS] = {0};
+
+static int rlNumContexes = 0;
+static int rlActiveContext = 0;
+
+
 #endif  // GRAPHICS_API_OPENGL_33 || GRAPHICS_API_OPENGL_ES2
 
 #if defined(GRAPHICS_API_OPENGL_ES2) && !defined(GRAPHICS_API_OPENGL_ES3)

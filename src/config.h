@@ -251,4 +251,8 @@
 //------------------------------------------------------------------------------------
 #define MAX_TRACELOG_MSG_LENGTH       256       // Max length of one trace-log message
 
+
+// mutlti-window: Configuration values
+#define MAX_WINDOWS 4
+
 #endif // CONFIG_H
