@@ -586,18 +586,24 @@ void InitWindow(int width, int height, const char* title)
 
 int InitWindowPro(int width, int height, const char* title)
 {
-    if (!SupportMultiWindow())
-        return -1;
-
     int index = -1;
+   
+    int windowCount = 0;
     for (int i = 0; i < MAX_WINDOWS; i++)
     {
         if (!CORE[i].active)
         {
-            index = i;
-            break;
+            if (index == -1)
+                index = i;
+        }
+        else
+        {
+            windowCount++;
         }
     }
+
+	if (!SupportMultiWindow() && windowCount != 0)
+		return -1;
 
     if (index < 0)
         return -1;
