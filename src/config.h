@@ -253,6 +253,10 @@
 
 
 // mutlti-window: Configuration values
+#if defined(PLATFORM_DESKTOP) || defined(PLATOFORM_DESKTOP_SDL)
 #define MAX_WINDOWS 4
+#else
+#define MAX_WINDOWS 1  
+#endif // desktops
 
 #endif // CONFIG_H
