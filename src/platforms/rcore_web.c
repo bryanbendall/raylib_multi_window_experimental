@@ -78,7 +78,7 @@ typedef struct {
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
-extern CoreData CORE;                   // Global CORE state context
+extern CoreData CORE[MAX_WINDOWS];                   // Global CORE state context
 
 static PlatformData platform = { 0 };   // Platform specific data
 
@@ -163,7 +163,7 @@ void ToggleFullscreen(void)
     */
     // EM_ASM(Module.requestFullscreen(false, false););
     /*
-        if (!CORE.Window.fullscreen)
+        if (!CORE[0].Window.fullscreen)
         {
             // Option 1: Request fullscreen for the canvas element
             // This option does not seem to work at all:
@@ -198,8 +198,8 @@ void ToggleFullscreen(void)
             emscripten_get_canvas_element_size("#canvas", &width, &height);
             TRACELOG(LOG_WARNING, "Emscripten: Enter fullscreen: Canvas size: %i x %i", width, height);
 
-            CORE.Window.fullscreen = true;          // Toggle fullscreen flag
-            CORE.Window.flags |= FLAG_FULLSCREEN_MODE;
+            CORE[0].Window.fullscreen = true;          // Toggle fullscreen flag
+            CORE[0].Window.flags |= FLAG_FULLSCREEN_MODE;
         }
         else
         {
@@ -210,12 +210,12 @@ void ToggleFullscreen(void)
             emscripten_get_canvas_element_size("#canvas", &width, &height);
             TRACELOG(LOG_WARNING, "Emscripten: Exit fullscreen: Canvas size: %i x %i", width, height);
 
-            CORE.Window.fullscreen = false;          // Toggle fullscreen flag
-            CORE.Window.flags &= ~FLAG_FULLSCREEN_MODE;
+            CORE[0].Window.fullscreen = false;          // Toggle fullscreen flag
+            CORE[0].Window.flags &= ~FLAG_FULLSCREEN_MODE;
         }
     */
 
-    CORE.Window.fullscreen = !CORE.Window.fullscreen; // Toggle fullscreen flag
+    CORE[0].Window.fullscreen = !CORE[0].Window.fullscreen; // Toggle fullscreen flag
 }
 
 // Toggle borderless windowed mode
@@ -269,7 +269,7 @@ void SetWindowIcons(Image *images, int count)
 // Set title for window
 void SetWindowTitle(const char *title)
 {
-    CORE.Window.title = title;
+    CORE[0].Window.title = title;
     emscripten_set_window_title(title);
 }
 
@@ -288,21 +288,21 @@ void SetWindowMonitor(int monitor)
 // Set window minimum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMinSize(int width, int height)
 {
-    CORE.Window.screenMin.width = width;
-    CORE.Window.screenMin.height = height;
+    CORE[0].Window.screenMin.width = width;
+    CORE[0].Window.screenMin.height = height;
 
     // Trigger the resize event once to update the window minimum width and height
-    if ((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) != 0) EmscriptenResizeCallback(EMSCRIPTEN_EVENT_RESIZE, NULL, NULL);
+    if ((CORE[0].Window.flags & FLAG_WINDOW_RESIZABLE) != 0) EmscriptenResizeCallback(EMSCRIPTEN_EVENT_RESIZE, NULL, NULL);
 }
 
 // Set window maximum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMaxSize(int width, int height)
 {
-    CORE.Window.screenMax.width = width;
-    CORE.Window.screenMax.height = height;
+    CORE[0].Window.screenMax.width = width;
+    CORE[0].Window.screenMax.height = height;
 
     // Trigger the resize event once to update the window maximum width and height
-    if ((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) != 0) EmscriptenResizeCallback(EMSCRIPTEN_EVENT_RESIZE, NULL, NULL);
+    if ((CORE[0].Window.flags & FLAG_WINDOW_RESIZABLE) != 0) EmscriptenResizeCallback(EMSCRIPTEN_EVENT_RESIZE, NULL, NULL);
 }
 
 // Set window dimensions
@@ -440,13 +440,13 @@ const char *GetClipboardText(void)
 // Show mouse cursor
 void ShowCursor(void)
 {
-    CORE.Input.Mouse.cursorHidden = false;
+    CORE[0].Input.Mouse.cursorHidden = false;
 }
 
 // Hides mouse cursor
 void HideCursor(void)
 {
-    CORE.Input.Mouse.cursorHidden = true;
+    CORE[0].Input.Mouse.cursorHidden = true;
 }
 
 // Enables cursor (unlock cursor)
@@ -455,9 +455,9 @@ void EnableCursor(void)
     emscripten_exit_pointerlock();
 
     // Set cursor position in the middle
-    SetMousePosition(CORE.Window.screen.width/2, CORE.Window.screen.height/2);
+    SetMousePosition(CORE[0].Window.screen.width/2, CORE[0].Window.screen.height/2);
 
-    CORE.Input.Mouse.cursorHidden = false;
+    CORE[0].Input.Mouse.cursorHidden = false;
 }
 
 // Disables cursor (lock cursor)
@@ -467,9 +467,9 @@ void DisableCursor(void)
     emscripten_request_pointerlock("#canvas", 1);
 
     // Set cursor position in the middle
-    SetMousePosition(CORE.Window.screen.width/2, CORE.Window.screen.height/2);
+    SetMousePosition(CORE[0].Window.screen.width/2, CORE[0].Window.screen.height/2);
 
-    CORE.Input.Mouse.cursorHidden = true;
+    CORE[0].Input.Mouse.cursorHidden = true;
 }
 
 // Swap back buffer with front buffer (screen drawing)
@@ -516,20 +516,20 @@ int SetGamepadMappings(const char *mappings)
 // Set mouse position XY
 void SetMousePosition(int x, int y)
 {
-    CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    CORE[0].Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
+    CORE[0].Input.Mouse.previousPosition = CORE[0].Input.Mouse.currentPosition;
 
     // NOTE: emscripten not implemented
-    glfwSetCursorPos(platform.handle, CORE.Input.Mouse.currentPosition.x, CORE.Input.Mouse.currentPosition.y);
+    glfwSetCursorPos(platform.handle, CORE[0].Input.Mouse.currentPosition.x, CORE[0].Input.Mouse.currentPosition.y);
 }
 
 // Set mouse cursor
 void SetMouseCursor(int cursor)
 {
-    if (CORE.Input.Mouse.cursor != cursor)
+    if (CORE[0].Input.Mouse.cursor != cursor)
     {
         const char *cursorName = NULL;
-        CORE.Input.Mouse.cursor = cursor;
+        CORE[0].Input.Mouse.cursor = cursor;
 
         switch (cursor)
         {
@@ -547,7 +547,7 @@ void SetMouseCursor(int cursor)
             default:
             {
                 cursorName = "default";
-                CORE.Input.Mouse.cursor = MOUSE_CURSOR_DEFAULT;
+                CORE[0].Input.Mouse.cursor = MOUSE_CURSOR_DEFAULT;
             } break;
         }
 
@@ -567,39 +567,39 @@ void PollInputEvents(void)
 #endif
 
     // Reset keys/chars pressed registered
-    CORE.Input.Keyboard.keyPressedQueueCount = 0;
-    CORE.Input.Keyboard.charPressedQueueCount = 0;
+    CORE[0].Input.Keyboard.keyPressedQueueCount = 0;
+    CORE[0].Input.Keyboard.charPressedQueueCount = 0;
 
     // Reset last gamepad button/axis registered state
-    CORE.Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
-    //CORE.Input.Gamepad.axisCount = 0;
+    CORE[0].Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
+    //CORE[0].Input.Gamepad.axisCount = 0;
 
     // Keyboard/Mouse input polling (automatically managed by GLFW3 through callback)
 
     // Register previous keys states
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++)
     {
-        CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
-        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+        CORE[0].Input.Keyboard.previousKeyState[i] = CORE[0].Input.Keyboard.currentKeyState[i];
+        CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
     // Register previous mouse states
-    for (int i = 0; i < MAX_MOUSE_BUTTONS; i++) CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
+    for (int i = 0; i < MAX_MOUSE_BUTTONS; i++) CORE[0].Input.Mouse.previousButtonState[i] = CORE[0].Input.Mouse.currentButtonState[i];
 
     // Register previous mouse wheel state
-    CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
-    CORE.Input.Mouse.currentWheelMove = (Vector2){ 0.0f, 0.0f };
+    CORE[0].Input.Mouse.previousWheelMove = CORE[0].Input.Mouse.currentWheelMove;
+    CORE[0].Input.Mouse.currentWheelMove = (Vector2){ 0.0f, 0.0f };
 
     // Register previous mouse position
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    CORE[0].Input.Mouse.previousPosition = CORE[0].Input.Mouse.currentPosition;
 
     // Register previous touch states
-    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.previousTouchState[i] = CORE[0].Input.Touch.currentTouchState[i];
 
     // Reset touch positions
     // TODO: It resets on target platform the mouse position and not filled again until a move-event,
     // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
-    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
+    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.position[i] = (Vector2){ 0, 0 };
 
 
     // Gamepad support using emscripten API
@@ -612,7 +612,7 @@ void PollInputEvents(void)
     for (int i = 0; (i < numGamepads) && (i < MAX_GAMEPADS); i++)
     {
         // Register previous gamepad button states
-        for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+        for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE[0].Input.Gamepad.previousButtonState[i][k] = CORE[0].Input.Gamepad.currentButtonState[i][k];
 
         EmscriptenGamepadEvent gamepadState;
 
@@ -651,10 +651,10 @@ void PollInputEvents(void)
                 {
                     if (gamepadState.digitalButton[j] == 1)
                     {
-                        CORE.Input.Gamepad.currentButtonState[i][button] = 1;
-                        CORE.Input.Gamepad.lastButtonPressed = button;
+                        CORE[0].Input.Gamepad.currentButtonState[i][button] = 1;
+                        CORE[0].Input.Gamepad.lastButtonPressed = button;
                     }
-                    else CORE.Input.Gamepad.currentButtonState[i][button] = 0;
+                    else CORE[0].Input.Gamepad.currentButtonState[i][button] = 0;
                 }
 
                 //TRACELOGD("INPUT: Gamepad %d, button %d: Digital: %d, Analog: %g", gamepadState.index, j, gamepadState.digitalButton[j], gamepadState.analogButton[j]);
@@ -663,17 +663,17 @@ void PollInputEvents(void)
             // Register axis data for every connected gamepad
             for (int j = 0; (j < gamepadState.numAxes) && (j < MAX_GAMEPAD_AXIS); j++)
             {
-                CORE.Input.Gamepad.axisState[i][j] = gamepadState.axis[j];
+                CORE[0].Input.Gamepad.axisState[i][j] = gamepadState.axis[j];
             }
 
-            CORE.Input.Gamepad.axisCount[i] = gamepadState.numAxes;
+            CORE[0].Input.Gamepad.axisCount[i] = gamepadState.numAxes;
         }
     }
 
-    CORE.Window.resizedLastFrame = false;
+    CORE[0].Window.resizedLastFrame = false;
 
     // TODO: This code does not seem to do anything??
-    //if (CORE.Window.eventWaiting) glfwWaitEvents();     // Wait for in input events before continue (drawing is paused)
+    //if (CORE[0].Window.eventWaiting) glfwWaitEvents();     // Wait for in input events before continue (drawing is paused)
     //else glfwPollEvents(); // Poll input events: keyboard/mouse/window events (callbacks) --> WARNING: Where is key input reset?
 }
 
@@ -703,33 +703,33 @@ int InitPlatform(void)
     // glfwWindowHint(GLFW_AUX_BUFFERS, 0);          // Number of auxiliar buffers
 
     // Check window creation flags
-    if ((CORE.Window.flags & FLAG_FULLSCREEN_MODE) > 0) CORE.Window.fullscreen = true;
+    if ((CORE[0].Window.flags & FLAG_FULLSCREEN_MODE) > 0) CORE[0].Window.fullscreen = true;
 
-    if ((CORE.Window.flags & FLAG_WINDOW_HIDDEN) > 0) glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Visible window
+    if ((CORE[0].Window.flags & FLAG_WINDOW_HIDDEN) > 0) glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE); // Visible window
     else glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE); // Window initially hidden
 
-    if ((CORE.Window.flags & FLAG_WINDOW_UNDECORATED) > 0) glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // Border and buttons on Window
+    if ((CORE[0].Window.flags & FLAG_WINDOW_UNDECORATED) > 0) glfwWindowHint(GLFW_DECORATED, GLFW_FALSE); // Border and buttons on Window
     else glfwWindowHint(GLFW_DECORATED, GLFW_TRUE); // Decorated window
 
-    if ((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) > 0) glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // Resizable window
+    if ((CORE[0].Window.flags & FLAG_WINDOW_RESIZABLE) > 0) glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // Resizable window
     else glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); // Avoid window being resizable
 
     // Disable FLAG_WINDOW_MINIMIZED, not supported on initialization
-    if ((CORE.Window.flags & FLAG_WINDOW_MINIMIZED) > 0) CORE.Window.flags &= ~FLAG_WINDOW_MINIMIZED;
+    if ((CORE[0].Window.flags & FLAG_WINDOW_MINIMIZED) > 0) CORE[0].Window.flags &= ~FLAG_WINDOW_MINIMIZED;
 
     // Disable FLAG_WINDOW_MAXIMIZED, not supported on initialization
-    if ((CORE.Window.flags & FLAG_WINDOW_MAXIMIZED) > 0) CORE.Window.flags &= ~FLAG_WINDOW_MAXIMIZED;
+    if ((CORE[0].Window.flags & FLAG_WINDOW_MAXIMIZED) > 0) CORE[0].Window.flags &= ~FLAG_WINDOW_MAXIMIZED;
 
-    if ((CORE.Window.flags & FLAG_WINDOW_UNFOCUSED) > 0) glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+    if ((CORE[0].Window.flags & FLAG_WINDOW_UNFOCUSED) > 0) glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
     else glfwWindowHint(GLFW_FOCUSED, GLFW_TRUE);
 
-    if ((CORE.Window.flags & FLAG_WINDOW_TOPMOST) > 0) glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+    if ((CORE[0].Window.flags & FLAG_WINDOW_TOPMOST) > 0) glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
     else glfwWindowHint(GLFW_FLOATING, GLFW_FALSE);
 
         // NOTE: Some GLFW flags are not supported on HTML5
         // e.g.: GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_SCALE_TO_MONITOR, GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_MOUSE_PASSTHROUGH
 
-    if (CORE.Window.flags & FLAG_MSAA_4X_HINT)
+    if (CORE[0].Window.flags & FLAG_MSAA_4X_HINT)
     {
         // NOTE: MSAA is only enabled for main framebuffer, not user-created FBOs
         TRACELOG(LOG_INFO, "DISPLAY: Trying to enable MSAA x4");
@@ -782,47 +782,47 @@ int InitPlatform(void)
     }
 
     // NOTE: Getting video modes is not implemented in emscripten GLFW3 version
-    CORE.Window.display.width = CORE.Window.screen.width;
-    CORE.Window.display.height = CORE.Window.screen.height;
+    CORE[0].Window.display.width = CORE[0].Window.screen.width;
+    CORE[0].Window.display.height = CORE[0].Window.screen.height;
 
-    if (CORE.Window.fullscreen)
+    if (CORE[0].Window.fullscreen)
     {
         // remember center for switchinging from fullscreen to window
-        if ((CORE.Window.screen.height == CORE.Window.display.height) && (CORE.Window.screen.width == CORE.Window.display.width))
+        if ((CORE[0].Window.screen.height == CORE[0].Window.display.height) && (CORE[0].Window.screen.width == CORE[0].Window.display.width))
         {
             // If screen width/height equal to the display, we can't calculate the window pos for toggling full-screened/windowed.
             // Toggling full-screened/windowed with pos(0, 0) can cause problems in some platforms, such as X11.
-            CORE.Window.position.x = CORE.Window.display.width/4;
-            CORE.Window.position.y = CORE.Window.display.height/4;
+            CORE[0].Window.position.x = CORE[0].Window.display.width/4;
+            CORE[0].Window.position.y = CORE[0].Window.display.height/4;
         }
         else
         {
-            CORE.Window.position.x = CORE.Window.display.width/2 - CORE.Window.screen.width/2;
-            CORE.Window.position.y = CORE.Window.display.height/2 - CORE.Window.screen.height/2;
+            CORE[0].Window.position.x = CORE[0].Window.display.width/2 - CORE[0].Window.screen.width/2;
+            CORE[0].Window.position.y = CORE[0].Window.display.height/2 - CORE[0].Window.screen.height/2;
         }
 
-        if (CORE.Window.position.x < 0) CORE.Window.position.x = 0;
-        if (CORE.Window.position.y < 0) CORE.Window.position.y = 0;
+        if (CORE[0].Window.position.x < 0) CORE[0].Window.position.x = 0;
+        if (CORE[0].Window.position.y < 0) CORE[0].Window.position.y = 0;
 
-        // Obtain recommended CORE.Window.display.width/CORE.Window.display.height from a valid videomode for the monitor
+        // Obtain recommended CORE[0].Window.display.width/CORE[0].Window.display.height from a valid videomode for the monitor
         int count = 0;
         const GLFWvidmode *modes = glfwGetVideoModes(glfwGetPrimaryMonitor(), &count);
 
-        // Get closest video mode to desired CORE.Window.screen.width/CORE.Window.screen.height
+        // Get closest video mode to desired CORE[0].Window.screen.width/CORE[0].Window.screen.height
         for (int i = 0; i < count; i++)
         {
-            if ((unsigned int)modes[i].width >= CORE.Window.screen.width)
+            if ((unsigned int)modes[i].width >= CORE[0].Window.screen.width)
             {
-                if ((unsigned int)modes[i].height >= CORE.Window.screen.height)
+                if ((unsigned int)modes[i].height >= CORE[0].Window.screen.height)
                 {
-                    CORE.Window.display.width = modes[i].width;
-                    CORE.Window.display.height = modes[i].height;
+                    CORE[0].Window.display.width = modes[i].width;
+                    CORE[0].Window.display.height = modes[i].height;
                     break;
                 }
             }
         }
 
-        TRACELOG(LOG_WARNING, "SYSTEM: Closest fullscreen videomode: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
+        TRACELOG(LOG_WARNING, "SYSTEM: Closest fullscreen videomode: %i x %i", CORE[0].Window.display.width, CORE[0].Window.display.height);
 
         // NOTE: ISSUE: Closest videomode could not match monitor aspect-ratio, for example,
         // for a desired screen size of 800x450 (16:9), closest supported videomode is 800x600 (4:3),
@@ -831,25 +831,25 @@ int InitPlatform(void)
 
         // Try to setup the most appropriate fullscreen framebuffer for the requested screenWidth/screenHeight
         // It considers device display resolution mode and setups a framebuffer with black bars if required (render size/offset)
-        // Modified global variables: CORE.Window.screen.width/CORE.Window.screen.height - CORE.Window.render.width/CORE.Window.render.height - CORE.Window.renderOffset.x/CORE.Window.renderOffset.y - CORE.Window.screenScale
+        // Modified global variables: CORE[0].Window.screen.width/CORE[0].Window.screen.height - CORE[0].Window.render.width/CORE[0].Window.render.height - CORE[0].Window.renderOffset.x/CORE[0].Window.renderOffset.y - CORE[0].Window.screenScale
         // TODO: It is a quite cumbersome solution to display size vs requested size, it should be reviewed or removed...
         // HighDPI monitors are properly considered in a following similar function: SetupViewport()
-        SetupFramebuffer(CORE.Window.display.width, CORE.Window.display.height);
+        SetupFramebuffer(CORE[0].Window.display.width, CORE[0].Window.display.height);
 
-        platform.handle = glfwCreateWindow(CORE.Window.display.width, CORE.Window.display.height, (CORE.Window.title != 0)? CORE.Window.title : " ", glfwGetPrimaryMonitor(), NULL);
+        platform.handle = glfwCreateWindow(CORE[0].Window.display.width, CORE[0].Window.display.height, (CORE[0].Window.title != 0)? CORE[0].Window.title : " ", glfwGetPrimaryMonitor(), NULL);
 
         // NOTE: Full-screen change, not working properly...
-        // glfwSetWindowMonitor(platform.handle, glfwGetPrimaryMonitor(), 0, 0, CORE.Window.screen.width, CORE.Window.screen.height, GLFW_DONT_CARE);
+        // glfwSetWindowMonitor(platform.handle, glfwGetPrimaryMonitor(), 0, 0, CORE[0].Window.screen.width, CORE[0].Window.screen.height, GLFW_DONT_CARE);
     }
     else
     {
         // No-fullscreen window creation
-        platform.handle = glfwCreateWindow(CORE.Window.screen.width, CORE.Window.screen.height, (CORE.Window.title != 0)? CORE.Window.title : " ", NULL, NULL);
+        platform.handle = glfwCreateWindow(CORE[0].Window.screen.width, CORE[0].Window.screen.height, (CORE[0].Window.title != 0)? CORE[0].Window.title : " ", NULL, NULL);
 
         if (platform.handle)
         {
-            CORE.Window.render.width = CORE.Window.screen.width;
-            CORE.Window.render.height = CORE.Window.screen.height;
+            CORE[0].Window.render.width = CORE[0].Window.screen.width;
+            CORE[0].Window.render.height = CORE[0].Window.screen.height;
         }
     }
 
@@ -861,7 +861,7 @@ int InitPlatform(void)
     }
 
     // WARNING: glfwCreateWindow() title doesn't work with emscripten
-    emscripten_set_window_title((CORE.Window.title != 0)? CORE.Window.title : " ");
+    emscripten_set_window_title((CORE[0].Window.title != 0)? CORE[0].Window.title : " ");
 
     // Set window callback events
     glfwSetWindowSizeCallback(platform.handle, WindowSizeCallback); // NOTE: Resizing not allowed by default!
@@ -883,21 +883,21 @@ int InitPlatform(void)
     // Check context activation
     if (result == true) //(result != GLFW_NO_WINDOW_CONTEXT) && (result != GLFW_PLATFORM_ERROR))
     {
-        CORE.Window.ready = true;
+        CORE[0].Window.ready = true;
 
-        int fbWidth = CORE.Window.screen.width;
-        int fbHeight = CORE.Window.screen.height;
+        int fbWidth = CORE[0].Window.screen.width;
+        int fbHeight = CORE[0].Window.screen.height;
 
-        CORE.Window.render.width = fbWidth;
-        CORE.Window.render.height = fbHeight;
-        CORE.Window.currentFbo.width = fbWidth;
-        CORE.Window.currentFbo.height = fbHeight;
+        CORE[0].Window.render.width = fbWidth;
+        CORE[0].Window.render.height = fbHeight;
+        CORE[0].Window.currentFbo.width = fbWidth;
+        CORE[0].Window.currentFbo.height = fbHeight;
 
         TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
-        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
-        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
-        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window.renderOffset.x, CORE.Window.renderOffset.y);
+        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE[0].Window.display.width, CORE[0].Window.display.height);
+        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE[0].Window.screen.width, CORE[0].Window.screen.height);
+        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE[0].Window.render.width, CORE[0].Window.render.height);
+        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE[0].Window.renderOffset.x, CORE[0].Window.renderOffset.y);
     }
     else
     {
@@ -905,10 +905,10 @@ int InitPlatform(void)
         return -1;
     }
 
-    if ((CORE.Window.flags & FLAG_WINDOW_MINIMIZED) > 0) MinimizeWindow();
+    if ((CORE[0].Window.flags & FLAG_WINDOW_MINIMIZED) > 0) MinimizeWindow();
 
     // If graphic device is no properly initialized, we end program
-    if (!CORE.Window.ready) { TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphic device"); return -1; }
+    if (!CORE[0].Window.ready) { TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphic device"); return -1; }
 
     // Load OpenGL extensions
     // NOTE: GL procedures address loader is required to load extensions
@@ -954,7 +954,7 @@ int InitPlatform(void)
 
     // Initialize storage system
     //----------------------------------------------------------------------------
-    CORE.Storage.basePath = GetWorkingDirectory();
+    CORE[0].Storage.basePath = GetWorkingDirectory();
     //----------------------------------------------------------------------------
 
     TRACELOG(LOG_INFO, "PLATFORM: WEB: Initialized successfully");
@@ -982,24 +982,24 @@ static void WindowSizeCallback(GLFWwindow *window, int width, int height)
     // Reset viewport and projection matrix for new size
     SetupViewport(width, height);
 
-    CORE.Window.currentFbo.width = width;
-    CORE.Window.currentFbo.height = height;
-    CORE.Window.resizedLastFrame = true;
+    CORE[0].Window.currentFbo.width = width;
+    CORE[0].Window.currentFbo.height = height;
+    CORE[0].Window.resizedLastFrame = true;
 
     if (IsWindowFullscreen()) return;
 
     // Set current screen size
-    if ((CORE.Window.flags & FLAG_WINDOW_HIGHDPI) > 0)
+    if ((CORE[0].Window.flags & FLAG_WINDOW_HIGHDPI) > 0)
     {
         Vector2 windowScaleDPI = GetWindowScaleDPI();
 
-        CORE.Window.screen.width = (unsigned int)(width/windowScaleDPI.x);
-        CORE.Window.screen.height = (unsigned int)(height/windowScaleDPI.y);
+        CORE[0].Window.screen.width = (unsigned int)(width/windowScaleDPI.x);
+        CORE[0].Window.screen.height = (unsigned int)(height/windowScaleDPI.y);
     }
     else
     {
-        CORE.Window.screen.width = width;
-        CORE.Window.screen.height = height;
+        CORE[0].Window.screen.width = width;
+        CORE[0].Window.screen.height = height;
     }
 
     // NOTE: Postprocessing texture is not scaled to new size
@@ -1008,8 +1008,8 @@ static void WindowSizeCallback(GLFWwindow *window, int width, int height)
 // GLFW3 WindowIconify Callback, runs when window is minimized/restored
 static void WindowIconifyCallback(GLFWwindow *window, int iconified)
 {
-    if (iconified) CORE.Window.flags |= FLAG_WINDOW_MINIMIZED;  // The window was iconified
-    else CORE.Window.flags &= ~FLAG_WINDOW_MINIMIZED;           // The window was restored
+    if (iconified) CORE[0].Window.flags |= FLAG_WINDOW_MINIMIZED;  // The window was iconified
+    else CORE[0].Window.flags &= ~FLAG_WINDOW_MINIMIZED;           // The window was restored
 }
 
 /*
@@ -1023,8 +1023,8 @@ static void WindowMaximizeCallback(GLFWwindow *window, int maximized)
 // GLFW3 WindowFocus Callback, runs when window get/lose focus
 static void WindowFocusCallback(GLFWwindow *window, int focused)
 {
-    if (focused) CORE.Window.flags &= ~FLAG_WINDOW_UNFOCUSED;   // The window was focused
-    else CORE.Window.flags |= FLAG_WINDOW_UNFOCUSED;            // The window lost focus
+    if (focused) CORE[0].Window.flags &= ~FLAG_WINDOW_UNFOCUSED;   // The window was focused
+    else CORE[0].Window.flags |= FLAG_WINDOW_UNFOCUSED;            // The window lost focus
 }
 
 // GLFW3 Window Drop Callback, runs when drop files into window
@@ -1033,24 +1033,24 @@ static void WindowDropCallback(GLFWwindow *window, int count, const char **paths
     if (count > 0)
     {
         // In case previous dropped filepaths have not been freed, we free them
-        if (CORE.Window.dropFileCount > 0)
+        if (CORE[0].Window.dropFileCount > 0)
         {
-            for (unsigned int i = 0; i < CORE.Window.dropFileCount; i++) RL_FREE(CORE.Window.dropFilepaths[i]);
+            for (unsigned int i = 0; i < CORE[0].Window.dropFileCount; i++) RL_FREE(CORE[0].Window.dropFilepaths[i]);
 
-            RL_FREE(CORE.Window.dropFilepaths);
+            RL_FREE(CORE[0].Window.dropFilepaths);
 
-            CORE.Window.dropFileCount = 0;
-            CORE.Window.dropFilepaths = NULL;
+            CORE[0].Window.dropFileCount = 0;
+            CORE[0].Window.dropFilepaths = NULL;
         }
 
         // WARNING: Paths are freed by GLFW when the callback returns, we must keep an internal copy
-        CORE.Window.dropFileCount = count;
-        CORE.Window.dropFilepaths = (char **)RL_CALLOC(CORE.Window.dropFileCount, sizeof(char *));
+        CORE[0].Window.dropFileCount = count;
+        CORE[0].Window.dropFilepaths = (char **)RL_CALLOC(CORE[0].Window.dropFileCount, sizeof(char *));
 
-        for (unsigned int i = 0; i < CORE.Window.dropFileCount; i++)
+        for (unsigned int i = 0; i < CORE[0].Window.dropFileCount; i++)
         {
-            CORE.Window.dropFilepaths[i] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
-            strcpy(CORE.Window.dropFilepaths[i], paths[i]);
+            CORE[0].Window.dropFilepaths[i] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
+            strcpy(CORE[0].Window.dropFilepaths[i], paths[i]);
         }
     }
 }
@@ -1062,20 +1062,20 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
 
     // WARNING: GLFW could return GLFW_REPEAT, we need to consider it as 1
     // to work properly with our implementation (IsKeyDown/IsKeyUp checks)
-    if (action == GLFW_RELEASE) CORE.Input.Keyboard.currentKeyState[key] = 0;
-    else if(action == GLFW_PRESS) CORE.Input.Keyboard.currentKeyState[key] = 1;
-    else if(action == GLFW_REPEAT) CORE.Input.Keyboard.keyRepeatInFrame[key] = 1;
+    if (action == GLFW_RELEASE) CORE[0].Input.Keyboard.currentKeyState[key] = 0;
+    else if(action == GLFW_PRESS) CORE[0].Input.Keyboard.currentKeyState[key] = 1;
+    else if(action == GLFW_REPEAT) CORE[0].Input.Keyboard.keyRepeatInFrame[key] = 1;
 
     // Check if there is space available in the key queue
-    if ((CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE) && (action == GLFW_PRESS))
+    if ((CORE[0].Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE) && (action == GLFW_PRESS))
     {
         // Add character to the queue
-        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = key;
-        CORE.Input.Keyboard.keyPressedQueueCount++;
+        CORE[0].Input.Keyboard.keyPressedQueue[CORE[0].Input.Keyboard.keyPressedQueueCount] = key;
+        CORE[0].Input.Keyboard.keyPressedQueueCount++;
     }
 
     // Check the exit key to set close window
-    if ((key == CORE.Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(platform.handle, GLFW_TRUE);
+    if ((key == CORE[0].Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(platform.handle, GLFW_TRUE);
 }
 
 // GLFW3 Char Key Callback, runs on key down (gets equivalent unicode char value)
@@ -1089,11 +1089,11 @@ static void CharCallback(GLFWwindow *window, unsigned int key)
     // Ref: https://www.glfw.org/docs/latest/input_guide.html#input_char
 
     // Check if there is space available in the queue
-    if (CORE.Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
+    if (CORE[0].Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
     {
         // Add character to the queue
-        CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = key;
-        CORE.Input.Keyboard.charPressedQueueCount++;
+        CORE[0].Input.Keyboard.charPressedQueue[CORE[0].Input.Keyboard.charPressedQueueCount] = key;
+        CORE[0].Input.Keyboard.charPressedQueueCount++;
     }
 }
 
@@ -1102,16 +1102,16 @@ static void MouseButtonCallback(GLFWwindow *window, int button, int action, int 
 {
     // WARNING: GLFW could only return GLFW_PRESS (1) or GLFW_RELEASE (0) for now,
     // but future releases may add more actions (i.e. GLFW_REPEAT)
-    CORE.Input.Mouse.currentButtonState[button] = action;
-    CORE.Input.Touch.currentTouchState[button] = action;
+    CORE[0].Input.Mouse.currentButtonState[button] = action;
+    CORE[0].Input.Touch.currentTouchState[button] = action;
 
 #if defined(SUPPORT_GESTURES_SYSTEM) && defined(SUPPORT_MOUSE_GESTURES)
     // Process mouse events as touches to be able to use mouse-gestures
     GestureEvent gestureEvent = { 0 };
 
     // Register touch actions
-    if ((CORE.Input.Mouse.currentButtonState[button] == 1) && (CORE.Input.Mouse.previousButtonState[button] == 0)) gestureEvent.touchAction = TOUCH_ACTION_DOWN;
-    else if ((CORE.Input.Mouse.currentButtonState[button] == 0) && (CORE.Input.Mouse.previousButtonState[button] == 1)) gestureEvent.touchAction = TOUCH_ACTION_UP;
+    if ((CORE[0].Input.Mouse.currentButtonState[button] == 1) && (CORE[0].Input.Mouse.previousButtonState[button] == 0)) gestureEvent.touchAction = TOUCH_ACTION_DOWN;
+    else if ((CORE[0].Input.Mouse.currentButtonState[button] == 0) && (CORE[0].Input.Mouse.previousButtonState[button] == 1)) gestureEvent.touchAction = TOUCH_ACTION_UP;
 
     // NOTE: TOUCH_ACTION_MOVE event is registered in MouseCursorPosCallback()
 
@@ -1124,7 +1124,7 @@ static void MouseButtonCallback(GLFWwindow *window, int button, int action, int 
     // Register touch points position, only one point registered
     gestureEvent.position[0] = GetMousePosition();
 
-    // Normalize gestureEvent.position[0] for CORE.Window.screen.width and CORE.Window.screen.height
+    // Normalize gestureEvent.position[0] for CORE[0].Window.screen.width and CORE[0].Window.screen.height
     gestureEvent.position[0].x /= (float)GetScreenWidth();
     gestureEvent.position[0].y /= (float)GetScreenHeight();
 
@@ -1138,9 +1138,9 @@ static void MouseButtonCallback(GLFWwindow *window, int button, int action, int 
 // GLFW3 Cursor Position Callback, runs on mouse move
 static void MouseCursorPosCallback(GLFWwindow *window, double x, double y)
 {
-    CORE.Input.Mouse.currentPosition.x = (float)x;
-    CORE.Input.Mouse.currentPosition.y = (float)y;
-    CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
+    CORE[0].Input.Mouse.currentPosition.x = (float)x;
+    CORE[0].Input.Mouse.currentPosition.y = (float)y;
+    CORE[0].Input.Touch.position[0] = CORE[0].Input.Mouse.currentPosition;
 
 #if defined(SUPPORT_GESTURES_SYSTEM) && defined(SUPPORT_MOUSE_GESTURES)
     // Process mouse events as touches to be able to use mouse-gestures
@@ -1155,9 +1155,9 @@ static void MouseCursorPosCallback(GLFWwindow *window, double x, double y)
     gestureEvent.pointCount = 1;
 
     // Register touch points position, only one point registered
-    gestureEvent.position[0] = CORE.Input.Touch.position[0];
+    gestureEvent.position[0] = CORE[0].Input.Touch.position[0];
 
-    // Normalize gestureEvent.position[0] for CORE.Window.screen.width and CORE.Window.screen.height
+    // Normalize gestureEvent.position[0] for CORE[0].Window.screen.width and CORE[0].Window.screen.height
     gestureEvent.position[0].x /= (float)GetScreenWidth();
     gestureEvent.position[0].y /= (float)GetScreenHeight();
 
@@ -1169,14 +1169,14 @@ static void MouseCursorPosCallback(GLFWwindow *window, double x, double y)
 // GLFW3 Scrolling Callback, runs on mouse wheel
 static void MouseScrollCallback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    CORE.Input.Mouse.currentWheelMove = (Vector2){ (float)xoffset, (float)yoffset };
+    CORE[0].Input.Mouse.currentWheelMove = (Vector2){ (float)xoffset, (float)yoffset };
 }
 
 // GLFW3 CursorEnter Callback, when cursor enters the window
 static void CursorEnterCallback(GLFWwindow *window, int enter)
 {
-    if (enter) CORE.Input.Mouse.cursorOnScreen = true;
-    else CORE.Input.Mouse.cursorOnScreen = false;
+    if (enter) CORE[0].Input.Mouse.cursorOnScreen = true;
+    else CORE[0].Input.Mouse.cursorOnScreen = false;
 }
 
 // Register fullscreen change events
@@ -1202,32 +1202,32 @@ EM_JS(int, GetWindowInnerHeight, (), { return window.innerHeight; });
 static EM_BOOL EmscriptenResizeCallback(int eventType, const EmscriptenUiEvent *event, void *userData)
 {
     // Don't resize non-resizeable windows
-    if ((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) == 0) return 1;
+    if ((CORE[0].Window.flags & FLAG_WINDOW_RESIZABLE) == 0) return 1;
 
     // This event is called whenever the window changes sizes,
     // so the size of the canvas object is explicitly retrieved below
     int width = GetWindowInnerWidth();
     int height = GetWindowInnerHeight();
 
-    if (width < CORE.Window.screenMin.width) width = CORE.Window.screenMin.width;
-    else if (width > CORE.Window.screenMax.width && CORE.Window.screenMax.width > 0) width = CORE.Window.screenMax.width;
+    if (width < CORE[0].Window.screenMin.width) width = CORE[0].Window.screenMin.width;
+    else if (width > CORE[0].Window.screenMax.width && CORE[0].Window.screenMax.width > 0) width = CORE[0].Window.screenMax.width;
 
-    if (height < CORE.Window.screenMin.height) height = CORE.Window.screenMin.height;
-    else if (height > CORE.Window.screenMax.height && CORE.Window.screenMax.height > 0) height = CORE.Window.screenMax.height;
+    if (height < CORE[0].Window.screenMin.height) height = CORE[0].Window.screenMin.height;
+    else if (height > CORE[0].Window.screenMax.height && CORE[0].Window.screenMax.height > 0) height = CORE[0].Window.screenMax.height;
 
     emscripten_set_canvas_element_size("#canvas", width, height);
 
     SetupViewport(width, height); // Reset viewport and projection matrix for new size
 
-    CORE.Window.currentFbo.width = width;
-    CORE.Window.currentFbo.height = height;
-    CORE.Window.resizedLastFrame = true;
+    CORE[0].Window.currentFbo.width = width;
+    CORE[0].Window.currentFbo.height = height;
+    CORE[0].Window.resizedLastFrame = true;
 
     if (IsWindowFullscreen()) return 1;
 
     // Set current screen size
-    CORE.Window.screen.width = width;
-    CORE.Window.screen.height = height;
+    CORE[0].Window.screen.width = width;
+    CORE[0].Window.screen.height = height;
 
     // NOTE: Postprocessing texture is not scaled to new size
 
@@ -1256,10 +1256,10 @@ static EM_BOOL EmscriptenGamepadCallback(int eventType, const EmscriptenGamepadE
 
     if ((gamepadEvent->connected) && (gamepadEvent->index < MAX_GAMEPADS))
     {
-        CORE.Input.Gamepad.ready[gamepadEvent->index] = true;
-        sprintf(CORE.Input.Gamepad.name[gamepadEvent->index], "%s", gamepadEvent->id);
+        CORE[0].Input.Gamepad.ready[gamepadEvent->index] = true;
+        sprintf(CORE[0].Input.Gamepad.name[gamepadEvent->index], "%s", gamepadEvent->id);
     }
-    else CORE.Input.Gamepad.ready[gamepadEvent->index] = false;
+    else CORE[0].Input.Gamepad.ready[gamepadEvent->index] = false;
 
     return 1; // The event was consumed by the callback handler
 }
@@ -1268,7 +1268,7 @@ static EM_BOOL EmscriptenGamepadCallback(int eventType, const EmscriptenGamepadE
 static EM_BOOL EmscriptenTouchCallback(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData)
 {
     // Register touch points count
-    CORE.Input.Touch.pointCount = touchEvent->numTouches;
+    CORE[0].Input.Touch.pointCount = touchEvent->numTouches;
 
     double canvasWidth = 0.0;
     double canvasHeight = 0.0;
@@ -1277,26 +1277,26 @@ static EM_BOOL EmscriptenTouchCallback(int eventType, const EmscriptenTouchEvent
     // EMSCRIPTEN_RESULT res = emscripten_get_canvas_element_size("#canvas", &canvasWidth, &canvasHeight);
     emscripten_get_element_css_size("#canvas", &canvasWidth, &canvasHeight);
 
-    for (int i = 0; (i < CORE.Input.Touch.pointCount) && (i < MAX_TOUCH_POINTS); i++)
+    for (int i = 0; (i < CORE[0].Input.Touch.pointCount) && (i < MAX_TOUCH_POINTS); i++)
     {
         // Register touch points id
-        CORE.Input.Touch.pointId[i] = touchEvent->touches[i].identifier;
+        CORE[0].Input.Touch.pointId[i] = touchEvent->touches[i].identifier;
 
         // Register touch points position
-        CORE.Input.Touch.position[i] = (Vector2){touchEvent->touches[i].targetX, touchEvent->touches[i].targetY};
+        CORE[0].Input.Touch.position[i] = (Vector2){touchEvent->touches[i].targetX, touchEvent->touches[i].targetY};
 
-        // Normalize gestureEvent.position[x] for CORE.Window.screen.width and CORE.Window.screen.height
-        CORE.Input.Touch.position[i].x *= ((float)GetScreenWidth()/(float)canvasWidth);
-        CORE.Input.Touch.position[i].y *= ((float)GetScreenHeight()/(float)canvasHeight);
+        // Normalize gestureEvent.position[x] for CORE[0].Window.screen.width and CORE[0].Window.screen.height
+        CORE[0].Input.Touch.position[i].x *= ((float)GetScreenWidth()/(float)canvasWidth);
+        CORE[0].Input.Touch.position[i].y *= ((float)GetScreenHeight()/(float)canvasHeight);
 
-        if (eventType == EMSCRIPTEN_EVENT_TOUCHSTART) CORE.Input.Touch.currentTouchState[i] = 1;
-        else if (eventType == EMSCRIPTEN_EVENT_TOUCHEND) CORE.Input.Touch.currentTouchState[i] = 0;
+        if (eventType == EMSCRIPTEN_EVENT_TOUCHSTART) CORE[0].Input.Touch.currentTouchState[i] = 1;
+        else if (eventType == EMSCRIPTEN_EVENT_TOUCHEND) CORE[0].Input.Touch.currentTouchState[i] = 0;
     }
 
 #if defined(SUPPORT_GESTURES_SYSTEM)
     GestureEvent gestureEvent = {0};
 
-    gestureEvent.pointCount = CORE.Input.Touch.pointCount;
+    gestureEvent.pointCount = CORE[0].Input.Touch.pointCount;
 
     // Register touch actions
     if (eventType == EMSCRIPTEN_EVENT_TOUCHSTART) gestureEvent.touchAction = TOUCH_ACTION_DOWN;
@@ -1306,8 +1306,8 @@ static EM_BOOL EmscriptenTouchCallback(int eventType, const EmscriptenTouchEvent
 
     for (int i = 0; (i < gestureEvent.pointCount) && (i < MAX_TOUCH_POINTS); i++)
     {
-        gestureEvent.pointId[i] = CORE.Input.Touch.pointId[i];
-        gestureEvent.position[i] = CORE.Input.Touch.position[i];
+        gestureEvent.pointId[i] = CORE[0].Input.Touch.pointId[i];
+        gestureEvent.position[i] = CORE[0].Input.Touch.position[i];
 
         // Normalize gestureEvent.position[i]
         gestureEvent.position[i].x /= (float)GetScreenWidth();
@@ -1318,7 +1318,7 @@ static EM_BOOL EmscriptenTouchCallback(int eventType, const EmscriptenTouchEvent
     ProcessGestureEvent(gestureEvent);
 
     // Reset the pointCount for web, if it was the last Touch End event
-    if (eventType == EMSCRIPTEN_EVENT_TOUCHEND && CORE.Input.Touch.pointCount == 1) CORE.Input.Touch.pointCount = 0;
+    if (eventType == EMSCRIPTEN_EVENT_TOUCHEND && CORE[0].Input.Touch.pointCount == 1) CORE[0].Input.Touch.pointCount = 0;
 #endif
 
     return 1; // The event was consumed by the callback handler

@@ -136,7 +136,7 @@ typedef struct {
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
-extern CoreData CORE;                   // Global CORE state context
+extern CoreData CORE[MAX_WINDOWS];;                   // Global CORE state context
 
 static PlatformData platform = { 0 };   // Platform specific data
 
@@ -221,7 +221,7 @@ static int FindNearestConnectorMode(const drmModeConnector *connector, uint widt
 // NOTE: By default, if KEY_ESCAPE pressed
 bool WindowShouldClose(void)
 {
-    if (CORE.Window.ready) return CORE.Window.shouldClose;
+    if (CORE[0].Window.ready) return CORE[0].Window.shouldClose;
     else return true;
 }
 
@@ -282,7 +282,7 @@ void SetWindowIcons(Image *images, int count)
 // Set title for window
 void SetWindowTitle(const char *title)
 {
-    CORE.Window.title = title;
+    CORE[0].Window.title = title;
 }
 
 // Set window position on screen (windowed mode)
@@ -300,15 +300,15 @@ void SetWindowMonitor(int monitor)
 // Set window minimum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMinSize(int width, int height)
 {
-    CORE.Window.screenMin.width = width;
-    CORE.Window.screenMin.height = height;
+    CORE[0].Window.screenMin.width = width;
+    CORE[0].Window.screenMin.height = height;
 }
 
 // Set window maximum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMaxSize(int width, int height)
 {
-    CORE.Window.screenMax.width = width;
-    CORE.Window.screenMax.height = height;
+    CORE[0].Window.screenMax.width = width;
+    CORE[0].Window.screenMax.height = height;
 }
 
 // Set window dimensions
@@ -434,23 +434,23 @@ const char *GetClipboardText(void)
 // Show mouse cursor
 void ShowCursor(void)
 {
-    CORE.Input.Mouse.cursorHidden = false;
+    CORE[0].Input.Mouse.cursorHidden = false;
 }
 
 // Hides mouse cursor
 void HideCursor(void)
 {
-    CORE.Input.Mouse.cursorHidden = true;
+    CORE[0].Input.Mouse.cursorHidden = true;
 }
 
 // Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
     // Set cursor position in the middle
-    SetMousePosition(CORE.Window.screen.width/2, CORE.Window.screen.height/2);
+    SetMousePosition(CORE[0].Window.screen.width/2, CORE[0].Window.screen.height/2);
 
     platform.cursorRelative = false;
-    CORE.Input.Mouse.cursorHidden = false;
+    CORE[0].Input.Mouse.cursorHidden = false;
 }
 
 // Disables cursor (lock cursor)
@@ -460,7 +460,7 @@ void DisableCursor(void)
     SetMousePosition(0, 0);
 
     platform.cursorRelative = true;
-    CORE.Input.Mouse.cursorHidden = true;
+    CORE[0].Input.Mouse.cursorHidden = true;
 }
 
 // Swap back buffer with front buffer (screen drawing)
@@ -505,7 +505,7 @@ double GetTime(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     unsigned long long int nanoSeconds = (unsigned long long int)ts.tv_sec*1000000000LLU + (unsigned long long int)ts.tv_nsec;
 
-    time = (double)(nanoSeconds - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
+    time = (double)(nanoSeconds - CORE[0].Time.base)*1e-9;  // Elapsed time since InitTimer()
 
     return time;
 }
@@ -534,8 +534,8 @@ int SetGamepadMappings(const char *mappings)
 // Set mouse position XY
 void SetMousePosition(int x, int y)
 {
-    CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    CORE[0].Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
+    CORE[0].Input.Mouse.previousPosition = CORE[0].Input.Mouse.currentPosition;
 }
 
 // Set mouse cursor
@@ -554,55 +554,55 @@ void PollInputEvents(void)
 #endif
 
     // Reset keys/chars pressed registered
-    CORE.Input.Keyboard.keyPressedQueueCount = 0;
-    CORE.Input.Keyboard.charPressedQueueCount = 0;
+    CORE[0].Input.Keyboard.keyPressedQueueCount = 0;
+    CORE[0].Input.Keyboard.charPressedQueueCount = 0;
 
     // Reset last gamepad button/axis registered state
-    CORE.Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
-    //CORE.Input.Gamepad.axisCount = 0;
+    CORE[0].Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
+    //CORE[0].Input.Gamepad.axisCount = 0;
 
     // Register previous keys states
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++)
     {
-        CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
-        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+        CORE[0].Input.Keyboard.previousKeyState[i] = CORE[0].Input.Keyboard.currentKeyState[i];
+        CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
     PollKeyboardEvents();
 
     // Register previous mouse position
-    if (platform.cursorRelative) CORE.Input.Mouse.currentPosition = (Vector2){ 0.0f, 0.0f };
-    else CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
+    if (platform.cursorRelative) CORE[0].Input.Mouse.currentPosition = (Vector2){ 0.0f, 0.0f };
+    else CORE[0].Input.Mouse.previousPosition = CORE[0].Input.Mouse.currentPosition;
 
     // Register previous mouse states
-    CORE.Input.Mouse.previousWheelMove = CORE.Input.Mouse.currentWheelMove;
-    CORE.Input.Mouse.currentWheelMove = platform.eventWheelMove;
+    CORE[0].Input.Mouse.previousWheelMove = CORE[0].Input.Mouse.currentWheelMove;
+    CORE[0].Input.Mouse.currentWheelMove = platform.eventWheelMove;
     platform.eventWheelMove = (Vector2){ 0.0f, 0.0f };
     for (int i = 0; i < MAX_MOUSE_BUTTONS; i++)
     {
-        CORE.Input.Mouse.previousButtonState[i] = CORE.Input.Mouse.currentButtonState[i];
-        CORE.Input.Mouse.currentButtonState[i] = platform.currentButtonStateEvdev[i];
-        CORE.Input.Touch.currentTouchState[i] = platform.currentButtonStateEvdev[i];
+        CORE[0].Input.Mouse.previousButtonState[i] = CORE[0].Input.Mouse.currentButtonState[i];
+        CORE[0].Input.Mouse.currentButtonState[i] = platform.currentButtonStateEvdev[i];
+        CORE[0].Input.Touch.currentTouchState[i] = platform.currentButtonStateEvdev[i];
     }
 
     // Register gamepads buttons events
     for (int i = 0; i < MAX_GAMEPADS; i++)
     {
-        if (CORE.Input.Gamepad.ready[i])
+        if (CORE[0].Input.Gamepad.ready[i])
         {
             // Register previous gamepad states
-            for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE.Input.Gamepad.previousButtonState[i][k] = CORE.Input.Gamepad.currentButtonState[i][k];
+            for (int k = 0; k < MAX_GAMEPAD_BUTTONS; k++) CORE[0].Input.Gamepad.previousButtonState[i][k] = CORE[0].Input.Gamepad.currentButtonState[i][k];
         }
     }
 
     // Register previous touch states
-    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.previousTouchState[i] = CORE[0].Input.Touch.currentTouchState[i];
 
     // Reset touch positions
-    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
+    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.position[i] = (Vector2){ 0, 0 };
 
     // Map touch position to mouse position for convenience
-    CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
+    CORE[0].Input.Touch.position[0] = CORE[0].Input.Mouse.currentPosition;
 
 #if defined(SUPPORT_SSH_KEYBOARD_RPI)
     // NOTE: Keyboard reading could be done using input_event(s) or just read from stdin, both methods are used here.
@@ -635,11 +635,11 @@ void PollInputEvents(void)
                 {
                     if (platform.cursorRelative)
                     {
-                        CORE.Input.Mouse.currentPosition.x = event.value;
-                        CORE.Input.Mouse.previousPosition.x = 0.0f;
+                        CORE[0].Input.Mouse.currentPosition.x = event.value;
+                        CORE[0].Input.Mouse.previousPosition.x = 0.0f;
                     }
-                    else CORE.Input.Mouse.currentPosition.x += event.value;
-                    CORE.Input.Touch.position[0].x = CORE.Input.Mouse.currentPosition.x;
+                    else CORE[0].Input.Mouse.currentPosition.x += event.value;
+                    CORE[0].Input.Touch.position[0].x = CORE[0].Input.Mouse.currentPosition.x;
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -649,11 +649,11 @@ void PollInputEvents(void)
                 {
                     if (platform.cursorRelative)
                     {
-                        CORE.Input.Mouse.currentPosition.y = event.value;
-                        CORE.Input.Mouse.previousPosition.y = 0.0f;
+                        CORE[0].Input.Mouse.currentPosition.y = event.value;
+                        CORE[0].Input.Mouse.previousPosition.y = 0.0f;
                     }
-                    else CORE.Input.Mouse.currentPosition.y += event.value;
-                    CORE.Input.Touch.position[0].y = CORE.Input.Mouse.currentPosition.y;
+                    else CORE[0].Input.Mouse.currentPosition.y += event.value;
+                    CORE[0].Input.Touch.position[0].y = CORE[0].Input.Mouse.currentPosition.y;
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -668,8 +668,8 @@ void PollInputEvents(void)
                 // Basic movement
                 if (event.code == ABS_X)
                 {
-                    CORE.Input.Mouse.currentPosition.x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;    // Scale according to absRange
-                    CORE.Input.Touch.position[0].x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;        // Scale according to absRange
+                    CORE[0].Input.Mouse.currentPosition.x = (event.value - platform.absRange.x)*CORE[0].Window.screen.width/platform.absRange.width;    // Scale according to absRange
+                    CORE[0].Input.Touch.position[0].x = (event.value - platform.absRange.x)*CORE[0].Window.screen.width/platform.absRange.width;        // Scale according to absRange
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -677,8 +677,8 @@ void PollInputEvents(void)
 
                 if (event.code == ABS_Y)
                 {
-                    CORE.Input.Mouse.currentPosition.y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;  // Scale according to absRange
-                    CORE.Input.Touch.position[0].y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;      // Scale according to absRange
+                    CORE[0].Input.Mouse.currentPosition.y = (event.value - platform.absRange.y)*CORE[0].Window.screen.height/platform.absRange.height;  // Scale according to absRange
+                    CORE[0].Input.Touch.position[0].y = (event.value - platform.absRange.y)*CORE[0].Window.screen.height/platform.absRange.height;      // Scale according to absRange
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -689,12 +689,12 @@ void PollInputEvents(void)
 
                 if (event.code == ABS_MT_POSITION_X)
                 {
-                    if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].x = (event.value - platform.absRange.x)*CORE.Window.screen.width/platform.absRange.width;    // Scale according to absRange
+                    if (platform.touchSlot < MAX_TOUCH_POINTS) CORE[0].Input.Touch.position[platform.touchSlot].x = (event.value - platform.absRange.x)*CORE[0].Window.screen.width/platform.absRange.width;    // Scale according to absRange
                 }
 
                 if (event.code == ABS_MT_POSITION_Y)
                 {
-                    if (platform.touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[platform.touchSlot].y = (event.value - platform.absRange.y)*CORE.Window.screen.height/platform.absRange.height;  // Scale according to absRange
+                    if (platform.touchSlot < MAX_TOUCH_POINTS) CORE[0].Input.Touch.position[platform.touchSlot].y = (event.value - platform.absRange.y)*CORE[0].Window.screen.height/platform.absRange.height;  // Scale according to absRange
                 }
 
                 if (event.code == ABS_MT_TRACKING_ID)
@@ -702,8 +702,8 @@ void PollInputEvents(void)
                     if ((event.value < 0) && (platform.touchSlot < MAX_TOUCH_POINTS))
                     {
                         // Touch has ended for this point
-                        CORE.Input.Touch.position[platform.touchSlot].x = -1;
-                        CORE.Input.Touch.position[platform.touchSlot].y = -1;
+                        CORE[0].Input.Touch.position[platform.touchSlot].x = -1;
+                        CORE[0].Input.Touch.position[platform.touchSlot].y = -1;
                     }
                 }
 
@@ -753,20 +753,20 @@ void PollInputEvents(void)
             }
 
             // Screen confinement
-            if (!CORE.Input.Mouse.cursorHidden)
+            if (!CORE[0].Input.Mouse.cursorHidden)
             {
-                if (CORE.Input.Mouse.currentPosition.x < 0) CORE.Input.Mouse.currentPosition.x = 0;
-                if (CORE.Input.Mouse.currentPosition.x > CORE.Window.screen.width/CORE.Input.Mouse.scale.x) CORE.Input.Mouse.currentPosition.x = CORE.Window.screen.width/CORE.Input.Mouse.scale.x;
+                if (CORE[0].Input.Mouse.currentPosition.x < 0) CORE[0].Input.Mouse.currentPosition.x = 0;
+                if (CORE[0].Input.Mouse.currentPosition.x > CORE[0].Window.screen.width/CORE[0].Input.Mouse.scale.x) CORE[0].Input.Mouse.currentPosition.x = CORE[0].Window.screen.width/CORE[0].Input.Mouse.scale.x;
 
-                if (CORE.Input.Mouse.currentPosition.y < 0) CORE.Input.Mouse.currentPosition.y = 0;
-                if (CORE.Input.Mouse.currentPosition.y > CORE.Window.screen.height/CORE.Input.Mouse.scale.y) CORE.Input.Mouse.currentPosition.y = CORE.Window.screen.height/CORE.Input.Mouse.scale.y;
+                if (CORE[0].Input.Mouse.currentPosition.y < 0) CORE[0].Input.Mouse.currentPosition.y = 0;
+                if (CORE[0].Input.Mouse.currentPosition.y > CORE[0].Window.screen.height/CORE[0].Input.Mouse.scale.y) CORE[0].Input.Mouse.currentPosition.y = CORE[0].Window.screen.height/CORE[0].Input.Mouse.scale.y;
             }
 
             // Update touch point count
-            CORE.Input.Touch.pointCount = 0;
+            CORE[0].Input.Touch.pointCount = 0;
             for (int i = 0; i < MAX_TOUCH_POINTS; i++)
             {
-                if (CORE.Input.Touch.position[i].x >= 0) CORE.Input.Touch.pointCount++;
+                if (CORE[0].Input.Touch.position[i].x >= 0) CORE[0].Input.Touch.pointCount++;
             }
 
 #if defined(SUPPORT_GESTURES_SYSTEM)
@@ -775,12 +775,12 @@ void PollInputEvents(void)
                 GestureEvent gestureEvent = { 0 };
 
                 gestureEvent.touchAction = touchAction;
-                gestureEvent.pointCount = CORE.Input.Touch.pointCount;
+                gestureEvent.pointCount = CORE[0].Input.Touch.pointCount;
 
                 for (int i = 0; i < MAX_TOUCH_POINTS; i++)
                 {
                     gestureEvent.pointId[i] = i;
-                    gestureEvent.position[i] = CORE.Input.Touch.position[i];
+                    gestureEvent.position[i] = CORE[0].Input.Touch.position[i];
                 }
 
                 ProcessGestureEvent(gestureEvent);
@@ -810,8 +810,8 @@ int InitPlatform(void)
 
     // Initialize graphic device: display/window and graphic context
     //----------------------------------------------------------------------------
-    CORE.Window.fullscreen = true;
-    CORE.Window.flags |= FLAG_FULLSCREEN_MODE;
+    CORE[0].Window.fullscreen = true;
+    CORE[0].Window.flags |= FLAG_FULLSCREEN_MODE;
 
 #if defined(DEFAULT_GRAPHIC_DEVICE_DRM)
     platform.fd = open(DEFAULT_GRAPHIC_DEVICE_DRM, O_RDWR);
@@ -892,7 +892,7 @@ int InitPlatform(void)
     }
 
     // If InitWindow should use the current mode find it in the connector's mode list
-    if ((CORE.Window.screen.width <= 0) || (CORE.Window.screen.height <= 0))
+    if ((CORE[0].Window.screen.width <= 0) || (CORE[0].Window.screen.height <= 0))
     {
         TRACELOG(LOG_TRACE, "DISPLAY: Selecting DRM connector mode for current used mode...");
 
@@ -906,24 +906,24 @@ int InitPlatform(void)
             return -1;
         }
 
-        CORE.Window.screen.width = CORE.Window.display.width;
-        CORE.Window.screen.height = CORE.Window.display.height;
+        CORE[0].Window.screen.width = CORE[0].Window.display.width;
+        CORE[0].Window.screen.height = CORE[0].Window.display.height;
     }
 
-    const bool allowInterlaced = CORE.Window.flags & FLAG_INTERLACED_HINT;
-    const int fps = (CORE.Time.target > 0)? (1.0/CORE.Time.target) : 60;
+    const bool allowInterlaced = CORE[0].Window.flags & FLAG_INTERLACED_HINT;
+    const int fps = (CORE[0].Time.target > 0)? (1.0/CORE[0].Time.target) : 60;
 
     // Try to find an exact matching mode
-    platform.modeIndex = FindExactConnectorMode(platform.connector, CORE.Window.screen.width, CORE.Window.screen.height, fps, allowInterlaced);
+    platform.modeIndex = FindExactConnectorMode(platform.connector, CORE[0].Window.screen.width, CORE[0].Window.screen.height, fps, allowInterlaced);
 
     // If nothing found, try to find a nearly matching mode
-    if (platform.modeIndex < 0) platform.modeIndex = FindNearestConnectorMode(platform.connector, CORE.Window.screen.width, CORE.Window.screen.height, fps, allowInterlaced);
+    if (platform.modeIndex < 0) platform.modeIndex = FindNearestConnectorMode(platform.connector, CORE[0].Window.screen.width, CORE[0].Window.screen.height, fps, allowInterlaced);
 
     // If nothing found, try to find an exactly matching mode including interlaced
-    if (platform.modeIndex < 0) platform.modeIndex = FindExactConnectorMode(platform.connector, CORE.Window.screen.width, CORE.Window.screen.height, fps, true);
+    if (platform.modeIndex < 0) platform.modeIndex = FindExactConnectorMode(platform.connector, CORE[0].Window.screen.width, CORE[0].Window.screen.height, fps, true);
 
     // If nothing found, try to find a nearly matching mode including interlaced
-    if (platform.modeIndex < 0) platform.modeIndex = FindNearestConnectorMode(platform.connector, CORE.Window.screen.width, CORE.Window.screen.height, fps, true);
+    if (platform.modeIndex < 0) platform.modeIndex = FindNearestConnectorMode(platform.connector, CORE[0].Window.screen.width, CORE[0].Window.screen.height, fps, true);
 
     // If nothing found, there is no suitable mode
     if (platform.modeIndex < 0)
@@ -934,8 +934,8 @@ int InitPlatform(void)
         return -1;
     }
 
-    CORE.Window.display.width = platform.connector->modes[platform.modeIndex].hdisplay;
-    CORE.Window.display.height = platform.connector->modes[platform.modeIndex].vdisplay;
+    CORE[0].Window.display.width = platform.connector->modes[platform.modeIndex].hdisplay;
+    CORE[0].Window.display.height = platform.connector->modes[platform.modeIndex].vdisplay;
 
     TRACELOG(LOG_INFO, "DISPLAY: Selected DRM connector mode %s (%ux%u%c@%u)", platform.connector->modes[platform.modeIndex].name,
         platform.connector->modes[platform.modeIndex].hdisplay, platform.connector->modes[platform.modeIndex].vdisplay,
@@ -943,8 +943,8 @@ int InitPlatform(void)
         platform.connector->modes[platform.modeIndex].vrefresh);
 
     // Use the width and height of the surface for render
-    CORE.Window.render.width = CORE.Window.screen.width;
-    CORE.Window.render.height = CORE.Window.screen.height;
+    CORE[0].Window.render.width = CORE[0].Window.screen.width;
+    CORE[0].Window.render.height = CORE[0].Window.screen.height;
 
     drmModeFreeEncoder(enc);
     enc = NULL;
@@ -969,7 +969,7 @@ int InitPlatform(void)
 
     EGLint samples = 0;
     EGLint sampleBuffer = 0;
-    if (CORE.Window.flags & FLAG_MSAA_4X_HINT)
+    if (CORE[0].Window.flags & FLAG_MSAA_4X_HINT)
     {
         samples = 4;
         sampleBuffer = 1;
@@ -1089,10 +1089,10 @@ int InitPlatform(void)
 
     // At this point we need to manage render size vs screen size
     // NOTE: This function use and modify global module variables:
-    //  -> CORE.Window.screen.width/CORE.Window.screen.height
-    //  -> CORE.Window.render.width/CORE.Window.render.height
-    //  -> CORE.Window.screenScale
-    SetupFramebuffer(CORE.Window.display.width, CORE.Window.display.height);
+    //  -> CORE[0].Window.screen.width/CORE[0].Window.screen.height
+    //  -> CORE[0].Window.render.width/CORE[0].Window.render.height
+    //  -> CORE[0].Window.screenScale
+    SetupFramebuffer(CORE[0].Window.display.width, CORE[0].Window.display.height);
 
     // There must be at least one frame displayed before the buffers are swapped
     //eglSwapInterval(platform.device, 1);
@@ -1102,18 +1102,18 @@ int InitPlatform(void)
     // Check surface and context activation
     if (result != EGL_FALSE)
     {
-        CORE.Window.ready = true;
+        CORE[0].Window.ready = true;
 
-        CORE.Window.render.width = CORE.Window.screen.width;
-        CORE.Window.render.height = CORE.Window.screen.height;
-        CORE.Window.currentFbo.width = CORE.Window.render.width;
-        CORE.Window.currentFbo.height = CORE.Window.render.height;
+        CORE[0].Window.render.width = CORE[0].Window.screen.width;
+        CORE[0].Window.render.height = CORE[0].Window.screen.height;
+        CORE[0].Window.currentFbo.width = CORE[0].Window.render.width;
+        CORE[0].Window.currentFbo.height = CORE[0].Window.render.height;
 
         TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window.display.width, CORE.Window.display.height);
-        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window.screen.width, CORE.Window.screen.height);
-        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window.render.width, CORE.Window.render.height);
-        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window.renderOffset.x, CORE.Window.renderOffset.y);
+        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE[0].Window.display.width, CORE[0].Window.display.height);
+        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE[0].Window.screen.width, CORE[0].Window.screen.height);
+        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE[0].Window.render.width, CORE[0].Window.render.height);
+        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE[0].Window.renderOffset.x, CORE[0].Window.renderOffset.y);
     }
     else
     {
@@ -1121,17 +1121,17 @@ int InitPlatform(void)
         return -1;
     }
 
-    if ((CORE.Window.flags & FLAG_WINDOW_MINIMIZED) > 0) MinimizeWindow();
+    if ((CORE[0].Window.flags & FLAG_WINDOW_MINIMIZED) > 0) MinimizeWindow();
 
     // If graphic device is no properly initialized, we end program
-    if (!CORE.Window.ready) { TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphic device"); return -1; }
-    else SetWindowPosition(GetMonitorWidth(GetCurrentMonitor()) / 2 - CORE.Window.screen.width / 2, GetMonitorHeight(GetCurrentMonitor()) / 2 - CORE.Window.screen.height / 2);
+    if (!CORE[0].Window.ready) { TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphic device"); return -1; }
+    else SetWindowPosition(GetMonitorWidth(GetCurrentMonitor()) / 2 - CORE[0].Window.screen.width / 2, GetMonitorHeight(GetCurrentMonitor()) / 2 - CORE[0].Window.screen.height / 2);
 
     // Set some default window flags
-    CORE.Window.flags &= ~FLAG_WINDOW_HIDDEN;       // false
-    CORE.Window.flags &= ~FLAG_WINDOW_MINIMIZED;    // false
-    CORE.Window.flags |= FLAG_WINDOW_MAXIMIZED;     // true
-    CORE.Window.flags &= ~FLAG_WINDOW_UNFOCUSED;    // false
+    CORE[0].Window.flags &= ~FLAG_WINDOW_HIDDEN;       // false
+    CORE[0].Window.flags &= ~FLAG_WINDOW_MINIMIZED;    // false
+    CORE[0].Window.flags |= FLAG_WINDOW_MAXIMIZED;     // true
+    CORE[0].Window.flags &= ~FLAG_WINDOW_UNFOCUSED;    // false
 
     // Load OpenGL extensions
     // NOTE: GL procedures address loader is required to load extensions
@@ -1153,7 +1153,7 @@ int InitPlatform(void)
 
     // Initialize storage system
     //----------------------------------------------------------------------------
-    CORE.Storage.basePath = GetWorkingDirectory();
+    CORE[0].Storage.basePath = GetWorkingDirectory();
     //----------------------------------------------------------------------------
 
     TRACELOG(LOG_INFO, "PLATFORM: DRM: Initialized successfully");
@@ -1229,9 +1229,9 @@ void ClosePlatform(void)
 
     // Wait for mouse and gamepad threads to finish before closing
     // NOTE: Those threads should already have finished at this point
-    // because they are controlled by CORE.Window.shouldClose variable
+    // because they are controlled by CORE[0].Window.shouldClose variable
 
-    CORE.Window.shouldClose = true;   // Added to force threads to exit when the close window is called
+    CORE[0].Window.shouldClose = true;   // Added to force threads to exit when the close window is called
 
     // Close the evdev keyboard
     if (platform.keyboardFd != -1)
@@ -1324,8 +1324,8 @@ static void ProcessKeyboard(void)
     // Reset pressed keys array (it will be filled below)
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++)
     {
-        CORE.Input.Keyboard.currentKeyState[i] = 0;
-        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+        CORE[0].Input.Keyboard.currentKeyState[i] = 0;
+        CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
     // Fill all read bytes (looking for keys)
@@ -1336,7 +1336,7 @@ static void ProcessKeyboard(void)
         if (keysBuffer[i] == 0x1b)
         {
             // Check if ESCAPE key has been pressed to stop program
-            if (bufferByteCount == 1) CORE.Input.Keyboard.currentKeyState[CORE.Input.Keyboard.exitKey] = 1;
+            if (bufferByteCount == 1) CORE[0].Input.Keyboard.currentKeyState[CORE[0].Input.Keyboard.exitKey] = 1;
             else
             {
                 if (keysBuffer[i + 1] == 0x5b)    // Special function key
@@ -1346,18 +1346,18 @@ static void ProcessKeyboard(void)
                         // Process special function keys (F1 - F12)
                         switch (keysBuffer[i + 3])
                         {
-                            case 0x41: CORE.Input.Keyboard.currentKeyState[290] = 1; break;    // raylib KEY_F1
-                            case 0x42: CORE.Input.Keyboard.currentKeyState[291] = 1; break;    // raylib KEY_F2
-                            case 0x43: CORE.Input.Keyboard.currentKeyState[292] = 1; break;    // raylib KEY_F3
-                            case 0x44: CORE.Input.Keyboard.currentKeyState[293] = 1; break;    // raylib KEY_F4
-                            case 0x45: CORE.Input.Keyboard.currentKeyState[294] = 1; break;    // raylib KEY_F5
-                            case 0x37: CORE.Input.Keyboard.currentKeyState[295] = 1; break;    // raylib KEY_F6
-                            case 0x38: CORE.Input.Keyboard.currentKeyState[296] = 1; break;    // raylib KEY_F7
-                            case 0x39: CORE.Input.Keyboard.currentKeyState[297] = 1; break;    // raylib KEY_F8
-                            case 0x30: CORE.Input.Keyboard.currentKeyState[298] = 1; break;    // raylib KEY_F9
-                            case 0x31: CORE.Input.Keyboard.currentKeyState[299] = 1; break;    // raylib KEY_F10
-                            case 0x33: CORE.Input.Keyboard.currentKeyState[300] = 1; break;    // raylib KEY_F11
-                            case 0x34: CORE.Input.Keyboard.currentKeyState[301] = 1; break;    // raylib KEY_F12
+                            case 0x41: CORE[0].Input.Keyboard.currentKeyState[290] = 1; break;    // raylib KEY_F1
+                            case 0x42: CORE[0].Input.Keyboard.currentKeyState[291] = 1; break;    // raylib KEY_F2
+                            case 0x43: CORE[0].Input.Keyboard.currentKeyState[292] = 1; break;    // raylib KEY_F3
+                            case 0x44: CORE[0].Input.Keyboard.currentKeyState[293] = 1; break;    // raylib KEY_F4
+                            case 0x45: CORE[0].Input.Keyboard.currentKeyState[294] = 1; break;    // raylib KEY_F5
+                            case 0x37: CORE[0].Input.Keyboard.currentKeyState[295] = 1; break;    // raylib KEY_F6
+                            case 0x38: CORE[0].Input.Keyboard.currentKeyState[296] = 1; break;    // raylib KEY_F7
+                            case 0x39: CORE[0].Input.Keyboard.currentKeyState[297] = 1; break;    // raylib KEY_F8
+                            case 0x30: CORE[0].Input.Keyboard.currentKeyState[298] = 1; break;    // raylib KEY_F9
+                            case 0x31: CORE[0].Input.Keyboard.currentKeyState[299] = 1; break;    // raylib KEY_F10
+                            case 0x33: CORE[0].Input.Keyboard.currentKeyState[300] = 1; break;    // raylib KEY_F11
+                            case 0x34: CORE[0].Input.Keyboard.currentKeyState[301] = 1; break;    // raylib KEY_F12
                             default: break;
                         }
 
@@ -1368,10 +1368,10 @@ static void ProcessKeyboard(void)
                     {
                         switch (keysBuffer[i + 2])
                         {
-                            case 0x41: CORE.Input.Keyboard.currentKeyState[265] = 1; break;    // raylib KEY_UP
-                            case 0x42: CORE.Input.Keyboard.currentKeyState[264] = 1; break;    // raylib KEY_DOWN
-                            case 0x43: CORE.Input.Keyboard.currentKeyState[262] = 1; break;    // raylib KEY_RIGHT
-                            case 0x44: CORE.Input.Keyboard.currentKeyState[263] = 1; break;    // raylib KEY_LEFT
+                            case 0x41: CORE[0].Input.Keyboard.currentKeyState[265] = 1; break;    // raylib KEY_UP
+                            case 0x42: CORE[0].Input.Keyboard.currentKeyState[264] = 1; break;    // raylib KEY_DOWN
+                            case 0x43: CORE[0].Input.Keyboard.currentKeyState[262] = 1; break;    // raylib KEY_RIGHT
+                            case 0x44: CORE[0].Input.Keyboard.currentKeyState[263] = 1; break;    // raylib KEY_LEFT
                             default: break;
                         }
 
@@ -1384,38 +1384,38 @@ static void ProcessKeyboard(void)
         }
         else if (keysBuffer[i] == 0x0a)     // raylib KEY_ENTER (don't mix with <linux/input.h> KEY_*)
         {
-            CORE.Input.Keyboard.currentKeyState[257] = 1;
+            CORE[0].Input.Keyboard.currentKeyState[257] = 1;
 
-            CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = 257;     // Add keys pressed into queue
-            CORE.Input.Keyboard.keyPressedQueueCount++;
+            CORE[0].Input.Keyboard.keyPressedQueue[CORE[0].Input.Keyboard.keyPressedQueueCount] = 257;     // Add keys pressed into queue
+            CORE[0].Input.Keyboard.keyPressedQueueCount++;
         }
         else if (keysBuffer[i] == 0x7f)     // raylib KEY_BACKSPACE
         {
-            CORE.Input.Keyboard.currentKeyState[259] = 1;
+            CORE[0].Input.Keyboard.currentKeyState[259] = 1;
 
-            CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = 257;     // Add keys pressed into queue
-            CORE.Input.Keyboard.keyPressedQueueCount++;
+            CORE[0].Input.Keyboard.keyPressedQueue[CORE[0].Input.Keyboard.keyPressedQueueCount] = 257;     // Add keys pressed into queue
+            CORE[0].Input.Keyboard.keyPressedQueueCount++;
         }
         else
         {
             // Translate lowercase a-z letters to A-Z
             if ((keysBuffer[i] >= 97) && (keysBuffer[i] <= 122))
             {
-                CORE.Input.Keyboard.currentKeyState[(int)keysBuffer[i] - 32] = 1;
+                CORE[0].Input.Keyboard.currentKeyState[(int)keysBuffer[i] - 32] = 1;
             }
-            else CORE.Input.Keyboard.currentKeyState[(int)keysBuffer[i]] = 1;
+            else CORE[0].Input.Keyboard.currentKeyState[(int)keysBuffer[i]] = 1;
 
-            CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = keysBuffer[i];     // Add keys pressed into queue
-            CORE.Input.Keyboard.keyPressedQueueCount++;
+            CORE[0].Input.Keyboard.keyPressedQueue[CORE[0].Input.Keyboard.keyPressedQueueCount] = keysBuffer[i];     // Add keys pressed into queue
+            CORE[0].Input.Keyboard.keyPressedQueueCount++;
         }
     }
 
     // Check exit key (same functionality as GLFW3 KeyCallback())
-    if (CORE.Input.Keyboard.currentKeyState[CORE.Input.Keyboard.exitKey] == 1) CORE.Window.shouldClose = true;
+    if (CORE[0].Input.Keyboard.currentKeyState[CORE[0].Input.Keyboard.exitKey] == 1) CORE[0].Window.shouldClose = true;
 
 #if defined(SUPPORT_SCREEN_CAPTURE)
     // Check screen capture key (raylib key: KEY_F12)
-    if (CORE.Input.Keyboard.currentKeyState[301] == 1)
+    if (CORE[0].Input.Keyboard.currentKeyState[301] == 1)
     {
         TakeScreenshot(TextFormat("screenshot%03i.png", screenshotCounter));
         screenshotCounter++;
@@ -1438,15 +1438,15 @@ static void InitEvdevInput(void)
     // Reset variables
     for (int i = 0; i < MAX_TOUCH_POINTS; ++i)
     {
-        CORE.Input.Touch.position[i].x = -1;
-        CORE.Input.Touch.position[i].y = -1;
+        CORE[0].Input.Touch.position[i].x = -1;
+        CORE[0].Input.Touch.position[i].y = -1;
     }
 
     // Reset keyboard key state
     for (int i = 0; i < MAX_KEYBOARD_KEYS; i++)
     {
-        CORE.Input.Keyboard.currentKeyState[i] = 0;
-        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
+        CORE[0].Input.Keyboard.currentKeyState[i] = 0;
+        CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
     // Open the linux directory of "/dev/input"
@@ -1712,22 +1712,22 @@ static void PollKeyboardEvents(void)
                 keycode = keymapUS[event.code & 0xFF];     // The code we get is a scancode so we look up the appropriate keycode
 
                 // Make sure we got a valid keycode
-                if ((keycode > 0) && (keycode < sizeof(CORE.Input.Keyboard.currentKeyState)))
+                if ((keycode > 0) && (keycode < sizeof(CORE[0].Input.Keyboard.currentKeyState)))
                 {
                     // WARNING: https://www.kernel.org/doc/Documentation/input/input.txt
                     // Event interface: 'value' is the value the event carries. Either a relative change for EV_REL,
                     // absolute new value for EV_ABS (joysticks ...), or 0 for EV_KEY for release, 1 for keypress and 2 for autorepeat
-                    CORE.Input.Keyboard.currentKeyState[keycode] = (event.value >= 1)? 1 : 0;
-                    CORE.Input.Keyboard.keyRepeatInFrame[keycode] = (event.value == 2)? 1 : 0;
+                    CORE[0].Input.Keyboard.currentKeyState[keycode] = (event.value >= 1)? 1 : 0;
+                    CORE[0].Input.Keyboard.keyRepeatInFrame[keycode] = (event.value == 2)? 1 : 0;
                     if (event.value >= 1)
                     {
-                        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = keycode;     // Register last key pressed
-                        CORE.Input.Keyboard.keyPressedQueueCount++;
+                        CORE[0].Input.Keyboard.keyPressedQueue[CORE[0].Input.Keyboard.keyPressedQueueCount] = keycode;     // Register last key pressed
+                        CORE[0].Input.Keyboard.keyPressedQueueCount++;
                     }
 
                 #if defined(SUPPORT_SCREEN_CAPTURE)
                     // Check screen capture key (raylib key: KEY_F12)
-                    if (CORE.Input.Keyboard.currentKeyState[301] == 1)
+                    if (CORE[0].Input.Keyboard.currentKeyState[301] == 1)
                     {
                         TakeScreenshot(TextFormat("screenshot%03i.png", screenshotCounter));
                         screenshotCounter++;
@@ -1738,15 +1738,15 @@ static void PollKeyboardEvents(void)
                     if (event.value == 1)
                     {
                         // Check if there is space available in the queue
-                        if (CORE.Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
+                        if (CORE[0].Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
                         {
                             // Add character to the queue
-                            CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = EvkeyToUnicodeLUT[event.code];
-                            CORE.Input.Keyboard.charPressedQueueCount++;
+                            CORE[0].Input.Keyboard.charPressedQueue[CORE[0].Input.Keyboard.charPressedQueueCount] = EvkeyToUnicodeLUT[event.code];
+                            CORE[0].Input.Keyboard.charPressedQueueCount++;
                         }
                     }
 
-                    if (CORE.Input.Keyboard.currentKeyState[CORE.Input.Keyboard.exitKey] == 1) CORE.Window.shouldClose = true;
+                    if (CORE[0].Input.Keyboard.currentKeyState[CORE[0].Input.Keyboard.exitKey] == 1) CORE[0].Window.shouldClose = true;
 
                     TRACELOGD("RPI: KEY_%s ScanCode: %4i KeyCode: %4i", (event.value == 0)? "UP" : "DOWN", event.code, keycode);
                 }
@@ -1765,7 +1765,7 @@ static void *EventThread(void *arg)
     int touchAction = -1;           // 0-TOUCH_ACTION_UP, 1-TOUCH_ACTION_DOWN, 2-TOUCH_ACTION_MOVE
     bool gestureUpdate = false;     // Flag to note gestures require to update
 
-    while (!CORE.Window.shouldClose)
+    while (!CORE[0].Window.shouldClose)
     {
         // Try to read data from the device and only continue if successful
         while (read(worker->fd, &event, sizeof(event)) == (int)sizeof(event))
@@ -1777,13 +1777,13 @@ static void *EventThread(void *arg)
                 {
                     if (platform.cursorRelative)
                     {
-                        CORE.Input.Mouse.currentPosition.x -= event.value;
-                        CORE.Input.Touch.position[0].x = CORE.Input.Mouse.currentPosition.x;
+                        CORE[0].Input.Mouse.currentPosition.x -= event.value;
+                        CORE[0].Input.Touch.position[0].x = CORE[0].Input.Mouse.currentPosition.x;
                     }
                     else
                     {
-                        CORE.Input.Mouse.currentPosition.x += event.value;
-                        CORE.Input.Touch.position[0].x = CORE.Input.Mouse.currentPosition.x;
+                        CORE[0].Input.Mouse.currentPosition.x += event.value;
+                        CORE[0].Input.Touch.position[0].x = CORE[0].Input.Mouse.currentPosition.x;
                     }
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
@@ -1794,13 +1794,13 @@ static void *EventThread(void *arg)
                 {
                     if (platform.cursorRelative)
                     {
-                        CORE.Input.Mouse.currentPosition.y -= event.value;
-                        CORE.Input.Touch.position[0].y = CORE.Input.Mouse.currentPosition.y;
+                        CORE[0].Input.Mouse.currentPosition.y -= event.value;
+                        CORE[0].Input.Touch.position[0].y = CORE[0].Input.Mouse.currentPosition.y;
                     }
                     else
                     {
-                        CORE.Input.Mouse.currentPosition.y += event.value;
-                        CORE.Input.Touch.position[0].y = CORE.Input.Mouse.currentPosition.y;
+                        CORE[0].Input.Mouse.currentPosition.y += event.value;
+                        CORE[0].Input.Touch.position[0].y = CORE[0].Input.Mouse.currentPosition.y;
                     }
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
@@ -1816,8 +1816,8 @@ static void *EventThread(void *arg)
                 // Basic movement
                 if (event.code == ABS_X)
                 {
-                    CORE.Input.Mouse.currentPosition.x = (event.value - worker->absRange.x)*CORE.Window.screen.width/worker->absRange.width;    // Scale according to absRange
-                    CORE.Input.Touch.position[0].x = (event.value - worker->absRange.x)*CORE.Window.screen.width/worker->absRange.width;        // Scale according to absRange
+                    CORE[0].Input.Mouse.currentPosition.x = (event.value - worker->absRange.x)*CORE[0].Window.screen.width/worker->absRange.width;    // Scale according to absRange
+                    CORE[0].Input.Touch.position[0].x = (event.value - worker->absRange.x)*CORE[0].Window.screen.width/worker->absRange.width;        // Scale according to absRange
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -1825,8 +1825,8 @@ static void *EventThread(void *arg)
 
                 if (event.code == ABS_Y)
                 {
-                    CORE.Input.Mouse.currentPosition.y = (event.value - worker->absRange.y)*CORE.Window.screen.height/worker->absRange.height;  // Scale according to absRange
-                    CORE.Input.Touch.position[0].y = (event.value - worker->absRange.y)*CORE.Window.screen.height/worker->absRange.height;      // Scale according to absRange
+                    CORE[0].Input.Mouse.currentPosition.y = (event.value - worker->absRange.y)*CORE[0].Window.screen.height/worker->absRange.height;  // Scale according to absRange
+                    CORE[0].Input.Touch.position[0].y = (event.value - worker->absRange.y)*CORE[0].Window.screen.height/worker->absRange.height;      // Scale according to absRange
 
                     touchAction = 2;    // TOUCH_ACTION_MOVE
                     gestureUpdate = true;
@@ -1837,12 +1837,12 @@ static void *EventThread(void *arg)
 
                 if (event.code == ABS_MT_POSITION_X)
                 {
-                    if (worker->touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[worker->touchSlot].x = (event.value - worker->absRange.x)*CORE.Window.screen.width/worker->absRange.width;    // Scale according to absRange
+                    if (worker->touchSlot < MAX_TOUCH_POINTS) CORE[0].Input.Touch.position[worker->touchSlot].x = (event.value - worker->absRange.x)*CORE[0].Window.screen.width/worker->absRange.width;    // Scale according to absRange
                 }
 
                 if (event.code == ABS_MT_POSITION_Y)
                 {
-                    if (worker->touchSlot < MAX_TOUCH_POINTS) CORE.Input.Touch.position[worker->touchSlot].y = (event.value - worker->absRange.y)*CORE.Window.screen.height/worker->absRange.height;  // Scale according to absRange
+                    if (worker->touchSlot < MAX_TOUCH_POINTS) CORE[0].Input.Touch.position[worker->touchSlot].y = (event.value - worker->absRange.y)*CORE[0].Window.screen.height/worker->absRange.height;  // Scale according to absRange
                 }
 
                 if (event.code == ABS_MT_TRACKING_ID)
@@ -1850,8 +1850,8 @@ static void *EventThread(void *arg)
                     if ((event.value < 0) && (worker->touchSlot < MAX_TOUCH_POINTS))
                     {
                         // Touch has ended for this point
-                        CORE.Input.Touch.position[worker->touchSlot].x = -1;
-                        CORE.Input.Touch.position[worker->touchSlot].y = -1;
+                        CORE[0].Input.Touch.position[worker->touchSlot].x = -1;
+                        CORE[0].Input.Touch.position[worker->touchSlot].y = -1;
                     }
                 }
 
@@ -1901,20 +1901,20 @@ static void *EventThread(void *arg)
             }
 
             // Screen confinement
-            if (!CORE.Input.Mouse.cursorHidden)
+            if (!CORE[0].Input.Mouse.cursorHidden)
             {
-                if (CORE.Input.Mouse.currentPosition.x < 0) CORE.Input.Mouse.currentPosition.x = 0;
-                if (CORE.Input.Mouse.currentPosition.x > CORE.Window.screen.width/CORE.Input.Mouse.scale.x) CORE.Input.Mouse.currentPosition.x = CORE.Window.screen.width/CORE.Input.Mouse.scale.x;
+                if (CORE[0].Input.Mouse.currentPosition.x < 0) CORE[0].Input.Mouse.currentPosition.x = 0;
+                if (CORE[0].Input.Mouse.currentPosition.x > CORE[0].Window.screen.width/CORE[0].Input.Mouse.scale.x) CORE[0].Input.Mouse.currentPosition.x = CORE[0].Window.screen.width/CORE[0].Input.Mouse.scale.x;
 
-                if (CORE.Input.Mouse.currentPosition.y < 0) CORE.Input.Mouse.currentPosition.y = 0;
-                if (CORE.Input.Mouse.currentPosition.y > CORE.Window.screen.height/CORE.Input.Mouse.scale.y) CORE.Input.Mouse.currentPosition.y = CORE.Window.screen.height/CORE.Input.Mouse.scale.y;
+                if (CORE[0].Input.Mouse.currentPosition.y < 0) CORE[0].Input.Mouse.currentPosition.y = 0;
+                if (CORE[0].Input.Mouse.currentPosition.y > CORE[0].Window.screen.height/CORE[0].Input.Mouse.scale.y) CORE[0].Input.Mouse.currentPosition.y = CORE[0].Window.screen.height/CORE[0].Input.Mouse.scale.y;
             }
 
             // Update touch point count
-            CORE.Input.Touch.pointCount = 0;
+            CORE[0].Input.Touch.pointCount = 0;
             for (int i = 0; i < MAX_TOUCH_POINTS; i++)
             {
-                if (CORE.Input.Touch.position[i].x >= 0) CORE.Input.Touch.pointCount++;
+                if (CORE[0].Input.Touch.position[i].x >= 0) CORE[0].Input.Touch.pointCount++;
             }
 
 #if defined(SUPPORT_GESTURES_SYSTEM)
@@ -1923,12 +1923,12 @@ static void *EventThread(void *arg)
                 GestureEvent gestureEvent = { 0 };
 
                 gestureEvent.touchAction = touchAction;
-                gestureEvent.pointCount = CORE.Input.Touch.pointCount;
+                gestureEvent.pointCount = CORE[0].Input.Touch.pointCount;
 
                 for (int i = 0; i < MAX_TOUCH_POINTS; i++)
                 {
                     gestureEvent.pointId[i] = i;
-                    gestureEvent.position[i] = CORE.Input.Touch.position[i];
+                    gestureEvent.position[i] = CORE[0].Input.Touch.position[i];
                 }
 
                 ProcessGestureEvent(gestureEvent);
@@ -1960,7 +1960,7 @@ static void InitGamepad(void)
         }
         else
         {
-            CORE.Input.Gamepad.ready[i] = true;
+            CORE[0].Input.Gamepad.ready[i] = true;
 
             // NOTE: Only create one thread
             if (i == 0)
@@ -1971,8 +1971,8 @@ static void InitGamepad(void)
                 else  TRACELOG(LOG_INFO, "RPI: Gamepad device initialized successfully");
             }
 
-            ioctl(platform.gamepadStreamFd[i], JSIOCGNAME(64), &CORE.Input.Gamepad.name[i]);
-            ioctl(platform.gamepadStreamFd[i], JSIOCGAXES, &CORE.Input.Gamepad.axisCount[i]);
+            ioctl(platform.gamepadStreamFd[i], JSIOCGNAME(64), &CORE[0].Input.Gamepad.name[i]);
+            ioctl(platform.gamepadStreamFd[i], JSIOCGAXES, &CORE[0].Input.Gamepad.axisCount[i]);
         }
     }
 }
@@ -1994,7 +1994,7 @@ static void *GamepadThread(void *arg)
     // Read gamepad event
     struct js_event gamepadEvent = { 0 };
 
-    while (!CORE.Window.shouldClose)
+    while (!CORE[0].Window.shouldClose)
     {
         for (int i = 0; i < MAX_GAMEPADS; i++)
         {
@@ -2010,10 +2010,10 @@ static void *GamepadThread(void *arg)
                     if (gamepadEvent.number < MAX_GAMEPAD_BUTTONS)
                     {
                         // 1 - button pressed, 0 - button released
-                        CORE.Input.Gamepad.currentButtonState[i][gamepadEvent.number] = (int)gamepadEvent.value;
+                        CORE[0].Input.Gamepad.currentButtonState[i][gamepadEvent.number] = (int)gamepadEvent.value;
 
-                        if ((int)gamepadEvent.value == 1) CORE.Input.Gamepad.lastButtonPressed = gamepadEvent.number;
-                        else CORE.Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
+                        if ((int)gamepadEvent.value == 1) CORE[0].Input.Gamepad.lastButtonPressed = gamepadEvent.number;
+                        else CORE[0].Input.Gamepad.lastButtonPressed = 0;       // GAMEPAD_BUTTON_UNKNOWN
                     }
                 }
                 else if (gamepadEvent.type == JS_EVENT_AXIS)
@@ -2023,7 +2023,7 @@ static void *GamepadThread(void *arg)
                     if (gamepadEvent.number < MAX_GAMEPAD_AXIS)
                     {
                         // NOTE: Scaling of gamepadEvent.value to get values between -1..1
-                        CORE.Input.Gamepad.axisState[i][gamepadEvent.number] = (float)gamepadEvent.value/32768;
+                        CORE[0].Input.Gamepad.axisState[i][gamepadEvent.number] = (float)gamepadEvent.value/32768;
                     }
                 }
             }
