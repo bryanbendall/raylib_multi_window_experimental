@@ -1604,6 +1604,11 @@ void ClosePlatform(void)
 #endif
 }
 
+void ActivatePlatformContext()
+{
+    glfwMakeContextCurrent(platform[GetActiveWindowContext()].handle);
+}
+
 // GLFW3 Error Callback, runs on GLFW3 error
 static void ErrorCallback(int error, const char *description)
 {

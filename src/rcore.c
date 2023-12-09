@@ -352,6 +352,7 @@ int numWindows = 0;
 int activeWindowContext = -1;
 
 extern bool SupportMultiWindow();
+extern void ActivatePlatformContext();
 
 int GetActiveWindowContext()
 {
@@ -563,11 +564,12 @@ RLAPI int SetActiveWindowContext(int windowId)
     if (!SupportMultiWindow())
         return 0;
 
-    if (windowId <= 0 || windowId >= numWindows)
+    if (windowId < 0 || windowId >= numWindows)
         return -1;
 
     activeWindowContext = windowId;
 
+    ActivatePlatformContext();
     rlSetActiveContext(activeWindowContext);
     return activeWindowContext;
 }

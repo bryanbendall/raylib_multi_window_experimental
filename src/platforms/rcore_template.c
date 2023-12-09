@@ -75,6 +75,11 @@ bool SupportMultiWindow()
     return false;
 }
 
+void ActivatePlatformContext()
+{
+}
+
+
 //----------------------------------------------------------------------------------
 // Module Internal Functions Declaration
 //----------------------------------------------------------------------------------

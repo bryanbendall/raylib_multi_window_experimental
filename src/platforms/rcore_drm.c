@@ -146,6 +146,10 @@ bool SupportMultiWindow()
     return false;
 }
 
+void ActivatePlatformContext()
+{
+}
+
 
 //----------------------------------------------------------------------------------
 // Local Variables Definition

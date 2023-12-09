@@ -79,6 +79,11 @@ bool SupportMultiWindow()
     return true;
 }
 
+void ActivatePlatformContext()
+{
+}
+
+
 extern int GetActiveWindowContext();
 
 static PlatformData platform[MAX_WINDOWS] = { 0 };   // Platform specific data
