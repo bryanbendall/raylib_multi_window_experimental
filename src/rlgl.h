@@ -1057,7 +1057,7 @@ typedef void *(*rlglLoadProc)(const char *name);   // OpenGL extension functions
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
 
 #ifndef MAX_WINDOWS
-#ifdef PLATFORM_DESKTOP || PLATOFORM_DESKTOP_SDL
+#ifdef PLATFORM_DESKTOP
 #define MAX_WINDOWS 4
 #else
 #define MAX_WINDOWS 1  

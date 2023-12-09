@@ -76,7 +76,7 @@ extern CoreData CORE[MAX_WINDOWS];                   // Global CORE state contex
 
 bool SupportMultiWindow()
 {
-    return true;
+    return false;
 }
 
 extern int GetActiveWindowContext();
