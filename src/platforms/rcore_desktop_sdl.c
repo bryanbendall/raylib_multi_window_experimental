@@ -79,14 +79,16 @@ bool SupportMultiWindow()
     return true;
 }
 
-void ActivatePlatformContext()
-{
-}
-
-
 extern int GetActiveWindowContext();
 
 static PlatformData platform[MAX_WINDOWS] = { 0 };   // Platform specific data
+
+
+void ActivatePlatformContext()
+{
+	SDL_GL_MakeCurrent(platform[GetActiveWindowContext()].window, platform[GetActiveWindowContext()].glContext)
+}
+
 
 //----------------------------------------------------------------------------------
 // Local Variables Definition
