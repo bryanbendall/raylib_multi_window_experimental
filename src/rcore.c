@@ -248,6 +248,7 @@ typedef struct { unsigned int width; unsigned int height; } Size;
 
 // Core global state context data
 typedef struct CoreData {
+    bool active;
     struct {
         const char *title;                  // Window text title const pointer
         unsigned int flags;                 // Configuration flags (bit based), keeps window state
@@ -347,8 +348,6 @@ typedef struct CoreData {
 //----------------------------------------------------------------------------------
 RLAPI const char *raylib_version = RAYLIB_VERSION;  // raylib version exported symbol, required for some bindings
 
-
-int numWindows = 0;
 int activeWindowContext = -1;
 
 extern bool SupportMultiWindow();
@@ -564,7 +563,7 @@ RLAPI int SetActiveWindowContext(int windowId)
     if (!SupportMultiWindow())
         return 0;
 
-    if (windowId < 0 || windowId >= numWindows)
+    if (windowId < 0 || windowId >= MAX_WINDOWS || !CORE[windowId].active)
         return -1;
 
     activeWindowContext = windowId;
@@ -578,7 +577,8 @@ RLAPI int SetActiveWindowContext(int windowId)
 // NOTE: data parameter could be used to pass any kind of required data to the initialization
 void InitWindow(int width, int height, const char* title)
 {
-    if (numWindows > 0)
+    // main window is active, so don't double up
+    if (CORE[0].active)
         return;
 
     InitWindowPro(width, height, title);
@@ -586,11 +586,23 @@ void InitWindow(int width, int height, const char* title)
 
 int InitWindowPro(int width, int height, const char* title)
 {
-    if (numWindows <= 1 && !SupportMultiWindow() || numWindows == MAX_WINDOWS)
+    if (!SupportMultiWindow())
         return -1;
 
-    activeWindowContext = numWindows;
-    numWindows++;
+    int index = -1;
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (!CORE[i].active)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if (index < 0)
+        return -1;
+
+    activeWindowContext = index;
 
     rlSetActiveContext(activeWindowContext);
 
@@ -640,6 +652,8 @@ int InitWindowPro(int width, int height, const char* title)
 #else
     TRACELOG(LOG_INFO, "    > raudio:.... not loaded (optional)");
 #endif
+    // mark this context as active
+    CORE[activeWindowContext].active = true;
 
     // Initialize window data
     CORE[activeWindowContext].Window.screen.width = width;
@@ -716,6 +730,9 @@ int InitWindowPro(int width, int height, const char* title)
 // Close window and unload OpenGL context
 void CloseWindow(void)
 {
+    if (!CORE[activeWindowContext].active)
+        return;
+
 #if defined(SUPPORT_GIF_RECORDING)
     if (gifRecording)
     {
@@ -737,6 +754,8 @@ void CloseWindow(void)
     //--------------------------------------------------------------
 
     CORE[activeWindowContext].Window.ready = false;
+
+    CORE[activeWindowContext].active = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
 }
 
@@ -931,7 +950,9 @@ void EndDrawing(void)
     // Wait for some milliseconds...
     if (CORE[activeWindowContext].Time.frame < CORE[activeWindowContext].Time.target)
     {
-        WaitTime(CORE[activeWindowContext].Time.target - CORE[activeWindowContext].Time.frame);
+        // we only do waittime for the main window, not children
+        if (activeWindowContext == 0)
+            WaitTime(CORE[activeWindowContext].Time.target - CORE[activeWindowContext].Time.frame);
 
         CORE[activeWindowContext].Time.current = GetTime();
         double waitTime = CORE[activeWindowContext].Time.current - CORE[activeWindowContext].Time.previous;

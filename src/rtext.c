@@ -113,7 +113,7 @@
 #if defined(SUPPORT_DEFAULT_FONT)
 // Default font provided by raylib
 // NOTE: Default font is loaded on InitWindow() and disposed on CloseWindow() [module: core]
-static Font defaultFont = { 0 };
+static Font defaultFont[MAX_WINDOWS] = {0};
 #endif
 
 //----------------------------------------------------------------------------------
@@ -132,6 +132,8 @@ static int textLineSpacing = 15;                // Text vertical line spacing in
 #if defined(SUPPORT_DEFAULT_FONT)
 extern void LoadFontDefault(void);
 extern void UnloadFontDefault(void);
+
+extern int GetActiveWindowContext();
 #endif
 
 //----------------------------------------------------------------------------------
@@ -146,8 +148,8 @@ extern void LoadFontDefault(void)
     // NOTE: Using UTF-8 encoding table for Unicode U+0000..U+00FF Basic Latin + Latin-1 Supplement
     // Ref: http://www.utf8-chartable.de/unicode-utf8-table.pl
 
-    defaultFont.glyphCount = 224;   // Number of chars included in our default font
-    defaultFont.glyphPadding = 0;   // Characters padding
+	defaultFont[GetActiveWindowContext()].glyphCount = 224;   // Number of chars included in our default font
+	defaultFont[GetActiveWindowContext()].glyphPadding = 0;   // Characters padding
 
     // Default font is directly defined here (data generated from a sprite font image)
     // This way, we reconstruct Font without creating large global variables
@@ -235,65 +237,70 @@ extern void LoadFontDefault(void)
         counter++;
     }
 
-    defaultFont.texture = LoadTextureFromImage(imFont);
+    defaultFont[GetActiveWindowContext()].texture = LoadTextureFromImage(imFont);
 
     // Reconstruct charSet using charsWidth[], charsHeight, charsDivisor, glyphCount
     //------------------------------------------------------------------------------
 
     // Allocate space for our characters info data
     // NOTE: This memory must be freed at end! --> Done by CloseWindow()
-    defaultFont.glyphs = (GlyphInfo *)RL_MALLOC(defaultFont.glyphCount*sizeof(GlyphInfo));
-    defaultFont.recs = (Rectangle *)RL_MALLOC(defaultFont.glyphCount*sizeof(Rectangle));
+    defaultFont[GetActiveWindowContext()].glyphs = (GlyphInfo *)RL_MALLOC(defaultFont[GetActiveWindowContext()].glyphCount*sizeof(GlyphInfo));
+    defaultFont[GetActiveWindowContext()].recs = (Rectangle *)RL_MALLOC(defaultFont[GetActiveWindowContext()].glyphCount*sizeof(Rectangle));
 
     int currentLine = 0;
     int currentPosX = charsDivisor;
     int testPosX = charsDivisor;
 
-    for (int i = 0; i < defaultFont.glyphCount; i++)
+    for (int i = 0; i < defaultFont[GetActiveWindowContext()].glyphCount; i++)
     {
-        defaultFont.glyphs[i].value = 32 + i;  // First char is 32
+        defaultFont[GetActiveWindowContext()].glyphs[i].value = 32 + i;  // First char is 32
 
-        defaultFont.recs[i].x = (float)currentPosX;
-        defaultFont.recs[i].y = (float)(charsDivisor + currentLine*(charsHeight + charsDivisor));
-        defaultFont.recs[i].width = (float)charsWidth[i];
-        defaultFont.recs[i].height = (float)charsHeight;
+        defaultFont[GetActiveWindowContext()].recs[i].x = (float)currentPosX;
+        defaultFont[GetActiveWindowContext()].recs[i].y = (float)(charsDivisor + currentLine*(charsHeight + charsDivisor));
+        defaultFont[GetActiveWindowContext()].recs[i].width = (float)charsWidth[i];
+        defaultFont[GetActiveWindowContext()].recs[i].height = (float)charsHeight;
 
-        testPosX += (int)(defaultFont.recs[i].width + (float)charsDivisor);
+        testPosX += (int)(defaultFont[GetActiveWindowContext()].recs[i].width + (float)charsDivisor);
 
-        if (testPosX >= defaultFont.texture.width)
+        if (testPosX >= defaultFont[GetActiveWindowContext()].texture.width)
         {
             currentLine++;
             currentPosX = 2*charsDivisor + charsWidth[i];
             testPosX = currentPosX;
 
-            defaultFont.recs[i].x = (float)charsDivisor;
-            defaultFont.recs[i].y = (float)(charsDivisor + currentLine*(charsHeight + charsDivisor));
+            defaultFont[GetActiveWindowContext()].recs[i].x = (float)charsDivisor;
+            defaultFont[GetActiveWindowContext()].recs[i].y = (float)(charsDivisor + currentLine*(charsHeight + charsDivisor));
         }
         else currentPosX = testPosX;
 
         // NOTE: On default font character offsets and xAdvance are not required
-        defaultFont.glyphs[i].offsetX = 0;
-        defaultFont.glyphs[i].offsetY = 0;
-        defaultFont.glyphs[i].advanceX = 0;
+        defaultFont[GetActiveWindowContext()].glyphs[i].offsetX = 0;
+        defaultFont[GetActiveWindowContext()].glyphs[i].offsetY = 0;
+        defaultFont[GetActiveWindowContext()].glyphs[i].advanceX = 0;
 
         // Fill character image data from fontClear data
-        defaultFont.glyphs[i].image = ImageFromImage(imFont, defaultFont.recs[i]);
+        defaultFont[GetActiveWindowContext()].glyphs[i].image = ImageFromImage(imFont, defaultFont[GetActiveWindowContext()].recs[i]);
     }
 
     UnloadImage(imFont);
 
-    defaultFont.baseSize = (int)defaultFont.recs[0].height;
+    defaultFont[GetActiveWindowContext()].baseSize = (int)defaultFont[GetActiveWindowContext()].recs[0].height;
 
-    TRACELOG(LOG_INFO, "FONT: Default font loaded successfully (%i glyphs)", defaultFont.glyphCount);
+    TRACELOG(LOG_INFO, "FONT: Default font loaded successfully (%i glyphs)", defaultFont[GetActiveWindowContext()].glyphCount);
 }
 
 // Unload raylib default font
 extern void UnloadFontDefault(void)
 {
-    for (int i = 0; i < defaultFont.glyphCount; i++) UnloadImage(defaultFont.glyphs[i].image);
-    UnloadTexture(defaultFont.texture);
-    RL_FREE(defaultFont.glyphs);
-    RL_FREE(defaultFont.recs);
+    if (defaultFont[GetActiveWindowContext()].texture.id == 0)
+        return;
+
+    for (int i = 0; i < defaultFont[GetActiveWindowContext()].glyphCount; i++) UnloadImage(defaultFont[GetActiveWindowContext()].glyphs[i].image);
+    UnloadTexture(defaultFont[GetActiveWindowContext()].texture);
+    RL_FREE(defaultFont[GetActiveWindowContext()].glyphs);
+    RL_FREE(defaultFont[GetActiveWindowContext()].recs);
+
+    defaultFont[GetActiveWindowContext()].texture.id = 0;
 }
 #endif      // SUPPORT_DEFAULT_FONT
 
@@ -301,7 +308,7 @@ extern void UnloadFontDefault(void)
 Font GetFontDefault()
 {
 #if defined(SUPPORT_DEFAULT_FONT)
-    return defaultFont;
+    return defaultFont[GetActiveWindowContext()];
 #else
     Font font = { 0 };
     return font;

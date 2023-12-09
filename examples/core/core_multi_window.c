@@ -33,21 +33,36 @@ int main(void)
     const int screenWidth = 800;
     const int screenHeight = 450;
 
-    
     int window1 = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 1");
     int window2 = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 2");
 
+    SetActiveWindowContext(window1);
+    SetWindowPosition(10, GetWindowPosition().y);
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+
+    Texture2D texture1 = LoadTexture("resources/wabbit_alpha.png");
+
+    SetActiveWindowContext(window2);
+    Texture2D texture2 = LoadTexture("resources/wabbit_alpha.png");
+    SetWindowPosition(820, GetWindowPosition().y);
     //--------------------------------------------------------------------------------------
 
+    Vector2 position1 = { 300,300 };
+    Vector2 position2 = { 500, 300 };
+
     // Main game loop
-    SetActiveWindowContext(window1);
-    while (!WindowShouldClose())    // Detect window close button or ESC key
+   
+    bool wantClose = false;
+
+    while (!wantClose)    // Detect window close button or ESC key
     {
         // Update
         //----------------------------------------------------------------------------------
         // TODO: Update your variables here
         //----------------------------------------------------------------------------------
+
+        position1.x += GetFrameTime() * 100;
+		position2.y += GetFrameTime() * 100;
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -58,7 +73,12 @@ int main(void)
 
             DrawText("I am the main window", 190, 200, 20, LIGHTGRAY);
 
+            DrawTexture(texture1, position1.x, position1.y, WHITE);
+            DrawFPS(0, 0);
+
         EndDrawing();
+
+        wantClose = WindowShouldClose();
 
         SetActiveWindowContext(window2);
         BeginDrawing();
@@ -66,8 +86,10 @@ int main(void)
         ClearBackground(BLACK);
 
         DrawText("I am the other window", 190, 200, 20, RAYWHITE);
-
+        DrawTexture(texture2, position2.x, position2.y, WHITE);
         EndDrawing();
+
+        wantClose = wantClose || WindowShouldClose();
         //----------------------------------------------------------------------------------
     }
 
