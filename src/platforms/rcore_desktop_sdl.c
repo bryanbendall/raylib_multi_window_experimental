@@ -76,7 +76,7 @@ extern CoreData CORE[MAX_WINDOWS];                   // Global CORE state contex
 
 bool SupportMultiWindow()
 {
-    return false;
+    return true;
 }
 
 extern int GetActiveWindowContext();
@@ -1280,8 +1280,23 @@ void PollInputEvents(void)
 int InitPlatform(void)
 {
     // Initialize SDL internal global state
-    int result = SDL_Init(SDL_INIT_EVERYTHING);
-    if (result < 0) { TRACELOG(LOG_WARNING, "SDL: Failed to initialize SDL"); return -1; }
+	bool anyActiveWindow = false;
+	for (int i = 0; i < MAX_WINDOWS; i++)
+	{
+		if (platform[i].window != NULL)
+			anyActiveWindow = true;
+	}
+    int result = 0;
+
+    if (!anyActiveWindow)
+    {
+        result = SDL_Init(SDL_INIT_EVERYTHING);
+        if (result < 0) 
+        { 
+            TRACELOG(LOG_WARNING, "SDL: Failed to initialize SDL");
+            return -1;
+        }
+    }
 
     // Initialize graphic device: display/window and graphic context
     //----------------------------------------------------------------------------
@@ -1443,7 +1458,17 @@ void ClosePlatform(void)
     SDL_FreeCursor(platform[GetActiveWindowContext()].cursor); // Free cursor
     SDL_GL_DeleteContext(platform[GetActiveWindowContext()].glContext); // Deinitialize OpenGL context
     SDL_DestroyWindow(platform[GetActiveWindowContext()].window);
-    SDL_Quit(); // Deinitialize SDL internal global state
+
+    platform[GetActiveWindowContext()].window = NULL;
+	bool anyActiveWindow = false;
+	for (int i = 0; i < MAX_WINDOWS; i++)
+	{
+		if (platform[i].window != NULL)
+			anyActiveWindow = true;
+	}
+
+    if (!anyActiveWindow)
+        SDL_Quit(); // Deinitialize SDL internal global state
 }
 
 // Scancode to keycode mapping
