@@ -1267,8 +1267,24 @@ int InitPlatform(void)
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, GLFW_FALSE);
 #endif
     // Initialize GLFW internal global state
-    int result = glfwInit();
-    if (result == GLFW_FALSE) { TRACELOG(LOG_WARNING, "GLFW: Failed to initialize GLFW"); return -1; }
+
+    bool anyActiveWindow = false;
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (platform[i].handle != NULL)
+            anyActiveWindow = true;
+    }
+
+    int result = GLFW_TRUE;
+    if (!anyActiveWindow)
+    {
+        result = glfwInit();
+        if (result == GLFW_FALSE) 
+        {
+            TRACELOG(LOG_WARNING, "GLFW: Failed to initialize GLFW");
+            return -1; 
+        }
+    }
 
     // Initialize graphic device: display/window and graphic context
     //----------------------------------------------------------------------------
@@ -1597,7 +1613,17 @@ int InitPlatform(void)
 void ClosePlatform(void)
 {
     glfwDestroyWindow(platform[GetActiveWindowContext()].handle);
-    glfwTerminate();
+    platform[GetActiveWindowContext()].handle = NULL;
+
+    bool anyActiveWindow = false;
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (platform[i].handle != NULL)
+            anyActiveWindow = true;
+    }
+
+    if (!anyActiveWindow)
+        glfwTerminate();
 
 #if defined(_WIN32) && defined(SUPPORT_WINMM_HIGHRES_TIMER) && !defined(SUPPORT_BUSY_WAIT_LOOP)
     timeEndPeriod(1);           // Restore time period
