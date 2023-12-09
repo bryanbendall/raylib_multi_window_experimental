@@ -86,7 +86,7 @@ static PlatformData platform[MAX_WINDOWS] = { 0 };   // Platform specific data
 
 void ActivatePlatformContext()
 {
-	SDL_GL_MakeCurrent(platform[GetActiveWindowContext()].window, platform[GetActiveWindowContext()].glContext)
+    SDL_GL_MakeCurrent(platform[GetActiveWindowContext()].window, platform[GetActiveWindowContext()].glContext);
 }
 
 
