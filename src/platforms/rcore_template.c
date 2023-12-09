@@ -68,6 +68,13 @@ extern CoreData CORE;                   // Global CORE state context
 
 static PlatformData platform = { 0 };   // Platform specific data
 
+// if you want to support multiple windows, then you need to return true here handle
+//   up to MAX_WINDOWS contexts
+bool SupportMultiWindow()
+{
+    return false;
+}
+
 //----------------------------------------------------------------------------------
 // Module Internal Functions Declaration
 //----------------------------------------------------------------------------------

@@ -113,7 +113,7 @@ bool SupportMultiWindow()
 
 extern int GetActiveWindowContext();
 
-static PlatformData platform = { 0 };   // Platform specific data
+static PlatformData platform[MAX_WINDOWS] = { 0 };   // Platform specific data
 
 //----------------------------------------------------------------------------------
 // Module Internal Functions Declaration
@@ -163,7 +163,7 @@ void ToggleFullscreen(void)
     if (!CORE[GetActiveWindowContext()].Window.fullscreen)
     {
         // Store previous window position (in case we exit fullscreen)
-        glfwGetWindowPos(platform.handle, &CORE[GetActiveWindowContext()].Window.position.x, &CORE[GetActiveWindowContext()].Window.position.y);
+        glfwGetWindowPos(platform[GetActiveWindowContext()].handle, &CORE[GetActiveWindowContext()].Window.position.x, &CORE[GetActiveWindowContext()].Window.position.y);
 
         int monitorCount = 0;
         int monitorIndex = GetCurrentMonitor();
@@ -179,14 +179,14 @@ void ToggleFullscreen(void)
             CORE[GetActiveWindowContext()].Window.fullscreen = false;
             CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_FULLSCREEN_MODE;
 
-            glfwSetWindowMonitor(platform.handle, NULL, 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
+            glfwSetWindowMonitor(platform[GetActiveWindowContext()].handle, NULL, 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
         }
         else
         {
             CORE[GetActiveWindowContext()].Window.fullscreen = true;
             CORE[GetActiveWindowContext()].Window.flags |= FLAG_FULLSCREEN_MODE;
 
-            glfwSetWindowMonitor(platform.handle, monitor, 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
+            glfwSetWindowMonitor(platform[GetActiveWindowContext()].handle, monitor, 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
         }
 
     }
@@ -195,7 +195,7 @@ void ToggleFullscreen(void)
         CORE[GetActiveWindowContext()].Window.fullscreen = false;
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_FULLSCREEN_MODE;
 
-        glfwSetWindowMonitor(platform.handle, NULL, CORE[GetActiveWindowContext()].Window.position.x, CORE[GetActiveWindowContext()].Window.position.y, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
+        glfwSetWindowMonitor(platform[GetActiveWindowContext()].handle, NULL, CORE[GetActiveWindowContext()].Window.position.x, CORE[GetActiveWindowContext()].Window.position.y, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
     }
 
     // Try to enable GPU V-Sync, so frames are limited to screen refresh rate (60Hz -> 60 FPS)
@@ -229,13 +229,13 @@ void ToggleBorderlessWindowed(void)
             {
                 // Store screen position and size
                 // NOTE: If it was on fullscreen, screen position was already stored, so skip setting it here
-                if (!wasOnFullscreen) glfwGetWindowPos(platform.handle, &CORE[GetActiveWindowContext()].Window.previousPosition.x, &CORE[GetActiveWindowContext()].Window.previousPosition.y);
+                if (!wasOnFullscreen) glfwGetWindowPos(platform[GetActiveWindowContext()].handle, &CORE[GetActiveWindowContext()].Window.previousPosition.x, &CORE[GetActiveWindowContext()].Window.previousPosition.y);
                 CORE[GetActiveWindowContext()].Window.previousScreen = CORE[GetActiveWindowContext()].Window.screen;
 
                 // Set undecorated and topmost modes and flags
-                glfwSetWindowAttrib(platform.handle, GLFW_DECORATED, GLFW_FALSE);
+                glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_DECORATED, GLFW_FALSE);
                 CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_UNDECORATED;
-                glfwSetWindowAttrib(platform.handle, GLFW_FLOATING, GLFW_TRUE);
+                glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FLOATING, GLFW_TRUE);
                 CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_TOPMOST;
 
                 // Get monitor position and size
@@ -246,29 +246,29 @@ void ToggleBorderlessWindowed(void)
                 const int monitorHeight = mode->height;
 
                 // Set screen position and size
-                glfwSetWindowPos(platform.handle, monitorPosX, monitorPosY);
-                glfwSetWindowSize(platform.handle, monitorWidth, monitorHeight);
+                glfwSetWindowPos(platform[GetActiveWindowContext()].handle, monitorPosX, monitorPosY);
+                glfwSetWindowSize(platform[GetActiveWindowContext()].handle, monitorWidth, monitorHeight);
 
                 // Refocus window
-                glfwFocusWindow(platform.handle);
+                glfwFocusWindow(platform[GetActiveWindowContext()].handle);
 
                 CORE[GetActiveWindowContext()].Window.flags |= FLAG_BORDERLESS_WINDOWED_MODE;
             }
             else
             {
                 // Remove topmost and undecorated modes and flags
-                glfwSetWindowAttrib(platform.handle, GLFW_FLOATING, GLFW_FALSE);
+                glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FLOATING, GLFW_FALSE);
                 CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_TOPMOST;
-                glfwSetWindowAttrib(platform.handle, GLFW_DECORATED, GLFW_TRUE);
+                glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_DECORATED, GLFW_TRUE);
                 CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_UNDECORATED;
 
                 // Return previous screen size and position
                 // NOTE: The order matters here, it must set size first, then set position, otherwise the screen will be positioned incorrectly
-                glfwSetWindowSize(platform.handle,  CORE[GetActiveWindowContext()].Window.previousScreen.width, CORE[GetActiveWindowContext()].Window.previousScreen.height);
-                glfwSetWindowPos(platform.handle, CORE[GetActiveWindowContext()].Window.previousPosition.x, CORE[GetActiveWindowContext()].Window.previousPosition.y);
+                glfwSetWindowSize(platform[GetActiveWindowContext()].handle,  CORE[GetActiveWindowContext()].Window.previousScreen.width, CORE[GetActiveWindowContext()].Window.previousScreen.height);
+                glfwSetWindowPos(platform[GetActiveWindowContext()].handle, CORE[GetActiveWindowContext()].Window.previousPosition.x, CORE[GetActiveWindowContext()].Window.previousPosition.y);
 
                 // Refocus window
-                glfwFocusWindow(platform.handle);
+                glfwFocusWindow(platform[GetActiveWindowContext()].handle);
 
                 CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
             }
@@ -281,9 +281,9 @@ void ToggleBorderlessWindowed(void)
 // Set window state: maximized, if resizable
 void MaximizeWindow(void)
 {
-    if (glfwGetWindowAttrib(platform.handle, GLFW_RESIZABLE) == GLFW_TRUE)
+    if (glfwGetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_RESIZABLE) == GLFW_TRUE)
     {
-        glfwMaximizeWindow(platform.handle);
+        glfwMaximizeWindow(platform[GetActiveWindowContext()].handle);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_MAXIMIZED;
     }
 }
@@ -292,16 +292,16 @@ void MaximizeWindow(void)
 void MinimizeWindow(void)
 {
     // NOTE: Following function launches callback that sets appropriate flag!
-    glfwIconifyWindow(platform.handle);
+    glfwIconifyWindow(platform[GetActiveWindowContext()].handle);
 }
 
 // Set window state: not minimized/maximized
 void RestoreWindow(void)
 {
-    if (glfwGetWindowAttrib(platform.handle, GLFW_RESIZABLE) == GLFW_TRUE)
+    if (glfwGetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_RESIZABLE) == GLFW_TRUE)
     {
         // Restores the specified window if it was previously iconified (minimized) or maximized
-        glfwRestoreWindow(platform.handle);
+        glfwRestoreWindow(platform[GetActiveWindowContext()].handle);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_MINIMIZED;
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_MAXIMIZED;
     }
@@ -336,21 +336,21 @@ void SetWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_RESIZABLE
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_RESIZABLE) != (flags & FLAG_WINDOW_RESIZABLE)) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_RESIZABLE, GLFW_TRUE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_RESIZABLE, GLFW_TRUE);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_RESIZABLE;
     }
 
     // State change: FLAG_WINDOW_UNDECORATED
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_UNDECORATED) != (flags & FLAG_WINDOW_UNDECORATED)) && (flags & FLAG_WINDOW_UNDECORATED))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_DECORATED, GLFW_FALSE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_DECORATED, GLFW_FALSE);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_UNDECORATED;
     }
 
     // State change: FLAG_WINDOW_HIDDEN
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_HIDDEN) != (flags & FLAG_WINDOW_HIDDEN)) && ((flags & FLAG_WINDOW_HIDDEN) > 0))
     {
-        glfwHideWindow(platform.handle);
+        glfwHideWindow(platform[GetActiveWindowContext()].handle);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_HIDDEN;
     }
 
@@ -371,14 +371,14 @@ void SetWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_UNFOCUSED
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_UNFOCUSED) != (flags & FLAG_WINDOW_UNFOCUSED)) && ((flags & FLAG_WINDOW_UNFOCUSED) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_UNFOCUSED;
     }
 
     // State change: FLAG_WINDOW_TOPMOST
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_TOPMOST) != (flags & FLAG_WINDOW_TOPMOST)) && ((flags & FLAG_WINDOW_TOPMOST) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_FLOATING, GLFW_TRUE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FLOATING, GLFW_TRUE);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_TOPMOST;
     }
 
@@ -405,7 +405,7 @@ void SetWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_MOUSE_PASSTHROUGH
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_MOUSE_PASSTHROUGH) != (flags & FLAG_WINDOW_MOUSE_PASSTHROUGH)) && ((flags & FLAG_WINDOW_MOUSE_PASSTHROUGH) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_MOUSE_PASSTHROUGH, GLFW_TRUE);
         CORE[GetActiveWindowContext()].Window.flags |= FLAG_WINDOW_MOUSE_PASSTHROUGH;
     }
 
@@ -451,14 +451,14 @@ void ClearWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_RESIZABLE
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_RESIZABLE) > 0) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_RESIZABLE, GLFW_FALSE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_RESIZABLE, GLFW_FALSE);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_RESIZABLE;
     }
 
     // State change: FLAG_WINDOW_HIDDEN
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_HIDDEN) > 0) && ((flags & FLAG_WINDOW_HIDDEN) > 0))
     {
-        glfwShowWindow(platform.handle);
+        glfwShowWindow(platform[GetActiveWindowContext()].handle);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_HIDDEN;
     }
 
@@ -477,21 +477,21 @@ void ClearWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_UNDECORATED
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_UNDECORATED) > 0) && ((flags & FLAG_WINDOW_UNDECORATED) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_DECORATED, GLFW_TRUE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_DECORATED, GLFW_TRUE);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_UNDECORATED;
     }
 
     // State change: FLAG_WINDOW_UNFOCUSED
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_UNFOCUSED) > 0) && ((flags & FLAG_WINDOW_UNFOCUSED) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_UNFOCUSED;
     }
 
     // State change: FLAG_WINDOW_TOPMOST
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_TOPMOST) > 0) && ((flags & FLAG_WINDOW_TOPMOST) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_FLOATING, GLFW_FALSE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_FLOATING, GLFW_FALSE);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_TOPMOST;
     }
 
@@ -518,7 +518,7 @@ void ClearWindowState(unsigned int flags)
     // State change: FLAG_WINDOW_MOUSE_PASSTHROUGH
     if (((CORE[GetActiveWindowContext()].Window.flags & FLAG_WINDOW_MOUSE_PASSTHROUGH) > 0) && ((flags & FLAG_WINDOW_MOUSE_PASSTHROUGH) > 0))
     {
-        glfwSetWindowAttrib(platform.handle, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
+        glfwSetWindowAttrib(platform[GetActiveWindowContext()].handle, GLFW_MOUSE_PASSTHROUGH, GLFW_FALSE);
         CORE[GetActiveWindowContext()].Window.flags &= ~FLAG_WINDOW_MOUSE_PASSTHROUGH;
     }
 
@@ -543,7 +543,7 @@ void SetWindowIcon(Image image)
     if (image.data == NULL)
     {
         // Revert to the default window icon, pass in an empty image array
-        glfwSetWindowIcon(platform.handle, 0, NULL);
+        glfwSetWindowIcon(platform[GetActiveWindowContext()].handle, 0, NULL);
     }
     else
     {
@@ -557,7 +557,7 @@ void SetWindowIcon(Image image)
 
             // NOTE 1: We only support one image icon
             // NOTE 2: The specified image data is copied before this function returns
-            glfwSetWindowIcon(platform.handle, 1, icon);
+            glfwSetWindowIcon(platform[GetActiveWindowContext()].handle, 1, icon);
         }
         else TRACELOG(LOG_WARNING, "GLFW: Window icon image must be in R8G8B8A8 pixel format");
     }
@@ -572,7 +572,7 @@ void SetWindowIcons(Image *images, int count)
     if ((images == NULL) || (count <= 0))
     {
         // Revert to the default window icon, pass in an empty image array
-        glfwSetWindowIcon(platform.handle, 0, NULL);
+        glfwSetWindowIcon(platform[GetActiveWindowContext()].handle, 0, NULL);
     }
     else
     {
@@ -592,7 +592,7 @@ void SetWindowIcons(Image *images, int count)
             else TRACELOG(LOG_WARNING, "GLFW: Window icon image must be in R8G8B8A8 pixel format");
         }
         // NOTE: Images data is copied internally before this function returns
-        glfwSetWindowIcon(platform.handle, valid, icons);
+        glfwSetWindowIcon(platform[GetActiveWindowContext()].handle, valid, icons);
 
         RL_FREE(icons);
     }
@@ -602,13 +602,13 @@ void SetWindowIcons(Image *images, int count)
 void SetWindowTitle(const char *title)
 {
     CORE[GetActiveWindowContext()].Window.title = title;
-    glfwSetWindowTitle(platform.handle, title);
+    glfwSetWindowTitle(platform[GetActiveWindowContext()].handle, title);
 }
 
 // Set window position on screen (windowed mode)
 void SetWindowPosition(int x, int y)
 {
-    glfwSetWindowPos(platform.handle, x, y);
+    glfwSetWindowPos(platform[GetActiveWindowContext()].handle, x, y);
 }
 
 // Set monitor for the current window
@@ -624,7 +624,7 @@ void SetWindowMonitor(int monitor)
             TRACELOG(LOG_INFO, "GLFW: Selected fullscreen monitor: [%i] %s", monitor, glfwGetMonitorName(monitors[monitor]));
 
             const GLFWvidmode *mode = glfwGetVideoMode(monitors[monitor]);
-            glfwSetWindowMonitor(platform.handle, monitors[monitor], 0, 0, mode->width, mode->height, mode->refreshRate);
+            glfwSetWindowMonitor(platform[GetActiveWindowContext()].handle, monitors[monitor], 0, 0, mode->width, mode->height, mode->refreshRate);
         }
         else
         {
@@ -639,12 +639,12 @@ void SetWindowMonitor(int monitor)
             glfwGetMonitorWorkarea(monitors[monitor], &monitorWorkareaX, &monitorWorkareaY, &monitorWorkareaWidth, &monitorWorkareaHeight);
 
             // If the screen size is larger than the monitor workarea, anchor it on the top left corner, otherwise, center it
-            if ((screenWidth >= monitorWorkareaWidth) || (screenHeight >= monitorWorkareaHeight)) glfwSetWindowPos(platform.handle, monitorWorkareaX, monitorWorkareaY);
+            if ((screenWidth >= monitorWorkareaWidth) || (screenHeight >= monitorWorkareaHeight)) glfwSetWindowPos(platform[GetActiveWindowContext()].handle, monitorWorkareaX, monitorWorkareaY);
             else
             {
                 const int x = monitorWorkareaX + (monitorWorkareaWidth/2) - (screenWidth/2);
                 const int y = monitorWorkareaY + (monitorWorkareaHeight/2) - (screenHeight/2);
-                glfwSetWindowPos(platform.handle, x, y);
+                glfwSetWindowPos(platform[GetActiveWindowContext()].handle, x, y);
             }
         }
     }
@@ -662,7 +662,7 @@ void SetWindowMinSize(int width, int height)
     int maxWidth  = (CORE[GetActiveWindowContext()].Window.screenMax.width  == 0)? GLFW_DONT_CARE : (int)CORE[GetActiveWindowContext()].Window.screenMax.width;
     int maxHeight = (CORE[GetActiveWindowContext()].Window.screenMax.height == 0)? GLFW_DONT_CARE : (int)CORE[GetActiveWindowContext()].Window.screenMax.height;
 
-    glfwSetWindowSizeLimits(platform.handle, minWidth, minHeight, maxWidth, maxHeight);
+    glfwSetWindowSizeLimits(platform[GetActiveWindowContext()].handle, minWidth, minHeight, maxWidth, maxHeight);
 }
 
 // Set window maximum dimensions (FLAG_WINDOW_RESIZABLE)
@@ -676,13 +676,13 @@ void SetWindowMaxSize(int width, int height)
     int maxWidth  = (CORE[GetActiveWindowContext()].Window.screenMax.width  == 0)? GLFW_DONT_CARE : (int)CORE[GetActiveWindowContext()].Window.screenMax.width;
     int maxHeight = (CORE[GetActiveWindowContext()].Window.screenMax.height == 0)? GLFW_DONT_CARE : (int)CORE[GetActiveWindowContext()].Window.screenMax.height;
 
-    glfwSetWindowSizeLimits(platform.handle, minWidth, minHeight, maxWidth, maxHeight);
+    glfwSetWindowSizeLimits(platform[GetActiveWindowContext()].handle, minWidth, minHeight, maxWidth, maxHeight);
 }
 
 // Set window dimensions
 void SetWindowSize(int width, int height)
 {
-    glfwSetWindowSize(platform.handle, width, height);
+    glfwSetWindowSize(platform[GetActiveWindowContext()].handle, width, height);
 }
 
 // Set window opacity, value opacity is between 0.0 and 1.0
@@ -690,13 +690,13 @@ void SetWindowOpacity(float opacity)
 {
     if (opacity >= 1.0f) opacity = 1.0f;
     else if (opacity <= 0.0f) opacity = 0.0f;
-    glfwSetWindowOpacity(platform.handle, opacity);
+    glfwSetWindowOpacity(platform[GetActiveWindowContext()].handle, opacity);
 }
 
 // Set window focused
 void SetWindowFocused(void)
 {
-    glfwFocusWindow(platform.handle);
+    glfwFocusWindow(platform[GetActiveWindowContext()].handle);
 }
 
 // Get native window handle
@@ -704,19 +704,19 @@ void *GetWindowHandle(void)
 {
 #if defined(_WIN32)
     // NOTE: Returned handle is: void *HWND (windows.h)
-    return glfwGetWin32Window(platform.handle);
+    return glfwGetWin32Window(platform[GetActiveWindowContext()].handle);
 #endif
 #if defined(__linux__)
     // NOTE: Returned handle is: unsigned long Window (X.h)
     // typedef unsigned long XID;
     // typedef XID Window;
-    //unsigned long id = (unsigned long)glfwGetX11Window(platform.handle);
+    //unsigned long id = (unsigned long)glfwGetX11Window(platform[GetActiveWindowContext()].handle);
     //return NULL;    // TODO: Find a way to return value... cast to void *?
-    return (void *)platform.handle;
+    return (void *)platform[GetActiveWindowContext()].handle;
 #endif
 #if defined(__APPLE__)
     // NOTE: Returned handle is: (objc_object *)
-    return (void *)glfwGetCocoaWindow(platform.handle);
+    return (void *)glfwGetCocoaWindow(platform[GetActiveWindowContext()].handle);
 #endif
 
     return NULL;
@@ -745,7 +745,7 @@ int GetCurrentMonitor(void)
         if (IsWindowFullscreen())
         {
             // Get the handle of the monitor that the specified window is in full screen on
-            monitor = glfwGetWindowMonitor(platform.handle);
+            monitor = glfwGetWindowMonitor(platform[GetActiveWindowContext()].handle);
 
             for (int i = 0; i < monitorCount; i++)
             {
@@ -769,7 +769,7 @@ int GetCurrentMonitor(void)
             int wcx = 0;
             int wcy = 0;
 
-            glfwGetWindowPos(platform.handle, &wcx, &wcy);
+            glfwGetWindowPos(platform[GetActiveWindowContext()].handle, &wcx, &wcy);
             wcx += (int)CORE[GetActiveWindowContext()].Window.screen.width/2;
             wcy += (int)CORE[GetActiveWindowContext()].Window.screen.height/2;
 
@@ -940,7 +940,7 @@ Vector2 GetWindowPosition(void)
     int x = 0;
     int y = 0;
 
-    glfwGetWindowPos(platform.handle, &x, &y);
+    glfwGetWindowPos(platform[GetActiveWindowContext()].handle, &x, &y);
 
     return (Vector2){ (float)x, (float)y };
 }
@@ -979,34 +979,34 @@ Vector2 GetWindowScaleDPI(void)
 // Set clipboard text content
 void SetClipboardText(const char *text)
 {
-    glfwSetClipboardString(platform.handle, text);
+    glfwSetClipboardString(platform[GetActiveWindowContext()].handle, text);
 }
 
 // Get clipboard text content
 // NOTE: returned string is allocated and freed by GLFW
 const char *GetClipboardText(void)
 {
-    return glfwGetClipboardString(platform.handle);
+    return glfwGetClipboardString(platform[GetActiveWindowContext()].handle);
 }
 
 // Show mouse cursor
 void ShowCursor(void)
 {
-    glfwSetInputMode(platform.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     CORE[GetActiveWindowContext()].Input.Mouse.cursorHidden = false;
 }
 
 // Hides mouse cursor
 void HideCursor(void)
 {
-    glfwSetInputMode(platform.handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+    glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
     CORE[GetActiveWindowContext()].Input.Mouse.cursorHidden = true;
 }
 
 // Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
-    glfwSetInputMode(platform.handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     // Set cursor position in the middle
     SetMousePosition(CORE[GetActiveWindowContext()].Window.screen.width/2, CORE[GetActiveWindowContext()].Window.screen.height/2);
@@ -1017,7 +1017,7 @@ void EnableCursor(void)
 // Disables cursor (lock cursor)
 void DisableCursor(void)
 {
-    glfwSetInputMode(platform.handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // Set cursor position in the middle
     SetMousePosition(CORE[GetActiveWindowContext()].Window.screen.width/2, CORE[GetActiveWindowContext()].Window.screen.height/2);
@@ -1028,7 +1028,7 @@ void DisableCursor(void)
 // Swap back buffer with front buffer (screen drawing)
 void SwapScreenBuffer(void)
 {
-    glfwSwapBuffers(platform.handle);
+    glfwSwapBuffers(platform[GetActiveWindowContext()].handle);
 }
 
 //----------------------------------------------------------------------------------
@@ -1086,18 +1086,18 @@ void SetMousePosition(int x, int y)
     CORE[GetActiveWindowContext()].Input.Mouse.previousPosition = CORE[GetActiveWindowContext()].Input.Mouse.currentPosition;
 
     // NOTE: emscripten not implemented
-    glfwSetCursorPos(platform.handle, CORE[GetActiveWindowContext()].Input.Mouse.currentPosition.x, CORE[GetActiveWindowContext()].Input.Mouse.currentPosition.y);
+    glfwSetCursorPos(platform[GetActiveWindowContext()].handle, CORE[GetActiveWindowContext()].Input.Mouse.currentPosition.x, CORE[GetActiveWindowContext()].Input.Mouse.currentPosition.y);
 }
 
 // Set mouse cursor
 void SetMouseCursor(int cursor)
 {
     CORE[GetActiveWindowContext()].Input.Mouse.cursor = cursor;
-    if (cursor == MOUSE_CURSOR_DEFAULT) glfwSetCursor(platform.handle, NULL);
+    if (cursor == MOUSE_CURSOR_DEFAULT) glfwSetCursor(platform[GetActiveWindowContext()].handle, NULL);
     else
     {
         // NOTE: We are relating internal GLFW enum values to our MouseCursor enum values
-        glfwSetCursor(platform.handle, glfwCreateStandardCursor(0x00036000 + cursor));
+        glfwSetCursor(platform[GetActiveWindowContext()].handle, glfwCreateStandardCursor(0x00036000 + cursor));
     }
 }
 
@@ -1236,10 +1236,10 @@ void PollInputEvents(void)
     // While window minimized, stop loop execution
     while (IsWindowState(FLAG_WINDOW_MINIMIZED) && !IsWindowState(FLAG_WINDOW_ALWAYS_RUN)) glfwWaitEvents();
 
-    CORE[GetActiveWindowContext()].Window.shouldClose = glfwWindowShouldClose(platform.handle);
+    CORE[GetActiveWindowContext()].Window.shouldClose = glfwWindowShouldClose(platform[GetActiveWindowContext()].handle);
 
     // Reset close status for next frame
-    glfwSetWindowShouldClose(platform.handle, GLFW_FALSE);
+    glfwSetWindowShouldClose(platform[GetActiveWindowContext()].handle, GLFW_FALSE);
 }
 
 
@@ -1455,10 +1455,10 @@ int InitPlatform(void)
         // HighDPI monitors are properly considered in a following similar function: SetupViewport()
         SetupFramebuffer(CORE[GetActiveWindowContext()].Window.display.width, CORE[GetActiveWindowContext()].Window.display.height);
 
-        platform.handle = glfwCreateWindow(CORE[GetActiveWindowContext()].Window.display.width, CORE[GetActiveWindowContext()].Window.display.height, (CORE[GetActiveWindowContext()].Window.title != 0)? CORE[GetActiveWindowContext()].Window.title : " ", glfwGetPrimaryMonitor(), NULL);
+        platform[GetActiveWindowContext()].handle = glfwCreateWindow(CORE[GetActiveWindowContext()].Window.display.width, CORE[GetActiveWindowContext()].Window.display.height, (CORE[GetActiveWindowContext()].Window.title != 0)? CORE[GetActiveWindowContext()].Window.title : " ", glfwGetPrimaryMonitor(), NULL);
 
         // NOTE: Full-screen change, not working properly...
-        //glfwSetWindowMonitor(platform.handle, glfwGetPrimaryMonitor(), 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
+        //glfwSetWindowMonitor(platform[GetActiveWindowContext()].handle, glfwGetPrimaryMonitor(), 0, 0, CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, GLFW_DONT_CARE);
     }
     else
     {
@@ -1469,23 +1469,23 @@ int InitPlatform(void)
         }
 
         // No-fullscreen window creation
-        platform.handle = glfwCreateWindow(CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, (CORE[GetActiveWindowContext()].Window.title != 0)? CORE[GetActiveWindowContext()].Window.title : " ", NULL, NULL);
+        platform[GetActiveWindowContext()].handle = glfwCreateWindow(CORE[GetActiveWindowContext()].Window.screen.width, CORE[GetActiveWindowContext()].Window.screen.height, (CORE[GetActiveWindowContext()].Window.title != 0)? CORE[GetActiveWindowContext()].Window.title : " ", NULL, NULL);
 
-        if (platform.handle)
+        if (platform[GetActiveWindowContext()].handle)
         {
             CORE[GetActiveWindowContext()].Window.render.width = CORE[GetActiveWindowContext()].Window.screen.width;
             CORE[GetActiveWindowContext()].Window.render.height = CORE[GetActiveWindowContext()].Window.screen.height;
         }
     }
 
-    if (!platform.handle)
+    if (!platform[GetActiveWindowContext()].handle)
     {
         glfwTerminate();
         TRACELOG(LOG_WARNING, "GLFW: Failed to initialize Window");
         return -1;
     }
 
-    glfwMakeContextCurrent(platform.handle);
+    glfwMakeContextCurrent(platform[GetActiveWindowContext()].handle);
     result = glfwGetError(NULL);
 
     // Check context activation
@@ -1513,7 +1513,7 @@ int InitPlatform(void)
             // NOTE: On APPLE platforms system should manage window/input scaling and also framebuffer scaling.
             // Framebuffer scaling should be activated with: glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_TRUE);
     #if !defined(__APPLE__)
-            glfwGetFramebufferSize(platform.handle, &fbWidth, &fbHeight);
+            glfwGetFramebufferSize(platform[GetActiveWindowContext()].handle, &fbWidth, &fbHeight);
 
             // Screen scaling matrix is required in case desired screen area is different from display area
             CORE[GetActiveWindowContext()].Window.screenScale = MatrixScale((float)fbWidth/CORE[GetActiveWindowContext()].Window.screen.width, (float)fbHeight/CORE[GetActiveWindowContext()].Window.screen.height, 1.0f);
@@ -1554,22 +1554,22 @@ int InitPlatform(void)
     // Initialize input events callbacks
     //----------------------------------------------------------------------------
     // Set window callback events
-    glfwSetWindowSizeCallback(platform.handle, WindowSizeCallback);      // NOTE: Resizing not allowed by default!
-    glfwSetWindowMaximizeCallback(platform.handle, WindowMaximizeCallback);
-    glfwSetWindowIconifyCallback(platform.handle, WindowIconifyCallback);
-    glfwSetWindowFocusCallback(platform.handle, WindowFocusCallback);
-    glfwSetDropCallback(platform.handle, WindowDropCallback);
+    glfwSetWindowSizeCallback(platform[GetActiveWindowContext()].handle, WindowSizeCallback);      // NOTE: Resizing not allowed by default!
+    glfwSetWindowMaximizeCallback(platform[GetActiveWindowContext()].handle, WindowMaximizeCallback);
+    glfwSetWindowIconifyCallback(platform[GetActiveWindowContext()].handle, WindowIconifyCallback);
+    glfwSetWindowFocusCallback(platform[GetActiveWindowContext()].handle, WindowFocusCallback);
+    glfwSetDropCallback(platform[GetActiveWindowContext()].handle, WindowDropCallback);
 
     // Set input callback events
-    glfwSetKeyCallback(platform.handle, KeyCallback);
-    glfwSetCharCallback(platform.handle, CharCallback);
-    glfwSetMouseButtonCallback(platform.handle, MouseButtonCallback);
-    glfwSetCursorPosCallback(platform.handle, MouseCursorPosCallback);   // Track mouse position changes
-    glfwSetScrollCallback(platform.handle, MouseScrollCallback);
-    glfwSetCursorEnterCallback(platform.handle, CursorEnterCallback);
+    glfwSetKeyCallback(platform[GetActiveWindowContext()].handle, KeyCallback);
+    glfwSetCharCallback(platform[GetActiveWindowContext()].handle, CharCallback);
+    glfwSetMouseButtonCallback(platform[GetActiveWindowContext()].handle, MouseButtonCallback);
+    glfwSetCursorPosCallback(platform[GetActiveWindowContext()].handle, MouseCursorPosCallback);   // Track mouse position changes
+    glfwSetScrollCallback(platform[GetActiveWindowContext()].handle, MouseScrollCallback);
+    glfwSetCursorEnterCallback(platform[GetActiveWindowContext()].handle, CursorEnterCallback);
     glfwSetJoystickCallback(JoystickCallback);
 
-    glfwSetInputMode(platform.handle, GLFW_LOCK_KEY_MODS, GLFW_TRUE);    // Enable lock keys modifiers (CAPS, NUM)
+    glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_LOCK_KEY_MODS, GLFW_TRUE);    // Enable lock keys modifiers (CAPS, NUM)
 
     // Retrieve gamepad names
     for (int i = 0; i < MAX_GAMEPADS; i++)
@@ -1596,7 +1596,7 @@ int InitPlatform(void)
 // Close platform
 void ClosePlatform(void)
 {
-    glfwDestroyWindow(platform.handle);
+    glfwDestroyWindow(platform[GetActiveWindowContext()].handle);
     glfwTerminate();
 
 #if defined(_WIN32) && defined(SUPPORT_WINMM_HIGHRES_TIMER) && !defined(SUPPORT_BUSY_WAIT_LOOP)
@@ -1718,7 +1718,7 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
     }
 
     // Check the exit key to set close window
-    if ((key == CORE[GetActiveWindowContext()].Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(platform.handle, GLFW_TRUE);
+    if ((key == CORE[GetActiveWindowContext()].Input.Keyboard.exitKey) && (action == GLFW_PRESS)) glfwSetWindowShouldClose(platform[GetActiveWindowContext()].handle, GLFW_TRUE);
 }
 
 // GLFW3 Char Key Callback, runs on key down (gets equivalent unicode char value)

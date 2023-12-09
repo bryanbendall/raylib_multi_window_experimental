@@ -140,6 +140,13 @@ extern CoreData CORE;                   // Global CORE state context
 
 static PlatformData platform = { 0 };   // Platform specific data
 
+
+bool SupportMultiWindow()
+{
+    return false;
+}
+
+
 //----------------------------------------------------------------------------------
 // Local Variables Definition
 //----------------------------------------------------------------------------------

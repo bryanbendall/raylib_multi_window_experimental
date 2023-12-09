@@ -567,6 +567,8 @@ RLAPI int SetActiveWindowContext(int windowId)
         return -1;
 
     activeWindowContext = windowId;
+
+    rlSetActiveContext(activeWindowContext);
     return activeWindowContext;
 }
 
@@ -587,6 +589,8 @@ int InitWindowPro(int width, int height, const char* title)
 
     activeWindowContext = numWindows;
     numWindows++;
+
+    rlSetActiveContext(activeWindowContext);
 
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
 
