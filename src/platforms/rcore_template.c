@@ -98,7 +98,7 @@ bool InitGraphicsDevice(void);   // Initialize graphics device
 // Check if application should close
 bool WindowShouldClose(void)
 {
-    if (CORE[0].Window.ready) return CORE[0].Window.shouldClose;
+    if (CORE.Window[0].ready) return CORE.Window[0].shouldClose;
     else return true;
 }
 
@@ -159,7 +159,7 @@ void SetWindowIcons(Image *images, int count)
 // Set title for window
 void SetWindowTitle(const char *title)
 {
-    CORE[0].Window.title = title;
+    CORE.Window[0].title = title;
 }
 
 // Set window position on screen (windowed mode)
@@ -177,15 +177,15 @@ void SetWindowMonitor(int monitor)
 // Set window minimum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMinSize(int width, int height)
 {
-    CORE[0].Window.screenMin.width = width;
-    CORE[0].Window.screenMin.height = height;
+    CORE.Window[0].screenMin.width = width;
+    CORE.Window[0].screenMin.height = height;
 }
 
 // Set window maximum dimensions (FLAG_WINDOW_RESIZABLE)
 void SetWindowMaxSize(int width, int height)
 {
-    CORE[0].Window.screenMax.width = width;
-    CORE[0].Window.screenMax.height = height;
+    CORE.Window[0].screenMax.width = width;
+    CORE.Window[0].screenMax.height = height;
 }
 
 // Set window dimensions
@@ -307,31 +307,31 @@ const char *GetClipboardText(void)
 // Show mouse cursor
 void ShowCursor(void)
 {
-    CORE[0].Input.Mouse.cursorHidden = false;
+    CORE.Input.Mouse.cursorHidden = false;
 }
 
 // Hides mouse cursor
 void HideCursor(void)
 {
-    CORE[0].Input.Mouse.cursorHidden = true;
+    CORE.Input.Mouse.cursorHidden = true;
 }
 
 // Enables cursor (unlock cursor)
 void EnableCursor(void)
 {
     // Set cursor position in the middle
-    SetMousePosition(CORE[0].Window.screen.width/2, CORE[0].Window.screen.height/2);
+    SetMousePosition(CORE.Window[0].screen.width/2, CORE.Window[0].screen.height/2);
 
-    CORE[0].Input.Mouse.cursorHidden = false;
+    CORE.Input.Mouse.cursorHidden = false;
 }
 
 // Disables cursor (lock cursor)
 void DisableCursor(void)
 {
     // Set cursor position in the middle
-    SetMousePosition(CORE[0].Window.screen.width/2, CORE[0].Window.screen.height/2);
+    SetMousePosition(CORE.Window[0].screen.width/2, CORE.Window[0].screen.height/2);
 
-    CORE[0].Input.Mouse.cursorHidden = true;
+    CORE.Input.Mouse.cursorHidden = true;
 }
 
 // Swap back buffer with front buffer (screen drawing)
@@ -352,7 +352,7 @@ double GetTime(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     unsigned long long int nanoSeconds = (unsigned long long int)ts.tv_sec*1000000000LLU + (unsigned long long int)ts.tv_nsec;
 
-    time = (double)(nanoSeconds - CORE[0].Time.base)*1e-9;  // Elapsed time since InitTimer()
+    time = (double)(nanoSeconds - CORE.Time.base)*1e-9;  // Elapsed time since InitTimer()
 
     return time;
 }
@@ -386,8 +386,8 @@ int SetGamepadMappings(const char *mappings)
 // Set mouse position XY
 void SetMousePosition(int x, int y)
 {
-    CORE[0].Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
-    CORE[0].Input.Mouse.previousPosition = CORE[0].Input.Mouse.currentPosition;
+    CORE.Input.Mouse.currentPosition = (Vector2){ (float)x, (float)y };
+    CORE.Input.Mouse.previousPosition = CORE.Input.Mouse.currentPosition;
 }
 
 // Set mouse cursor
@@ -406,30 +406,30 @@ void PollInputEvents(void)
 #endif
 
     // Reset keys/chars pressed registered
-    CORE[0].Input.Keyboard.keyPressedQueueCount = 0;
-    CORE[0].Input.Keyboard.charPressedQueueCount = 0;
+    CORE.Input.Keyboard.keyPressedQueueCount = 0;
+    CORE.Input.Keyboard.charPressedQueueCount = 0;
 
     // Reset key repeats
-    for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
+    for (int i = 0; i < MAX_KEYBOARD_KEYS; i++) CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
 
     // Reset last gamepad button/axis registered state
-    CORE[0].Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
-    //CORE[0].Input.Gamepad.axisCount = 0;
+    CORE.Input.Gamepad.lastButtonPressed = 0; // GAMEPAD_BUTTON_UNKNOWN
+    //CORE.Input.Gamepad.axisCount = 0;
 
     // Register previous touch states
-    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.previousTouchState[i] = CORE[0].Input.Touch.currentTouchState[i];
+    for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
 
     // Reset touch positions
     // TODO: It resets on target platform the mouse position and not filled again until a move-event,
     // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
-    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE[0].Input.Touch.position[i] = (Vector2){ 0, 0 };
+    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
 
     // Register previous keys states
     // NOTE: Android supports up to 260 keys
     for (int i = 0; i < 260; i++)
     {
-        CORE[0].Input.Keyboard.previousKeyState[i] = CORE[0].Input.Keyboard.currentKeyState[i];
-        CORE[0].Input.Keyboard.keyRepeatInFrame[i] = 0;
+        CORE.Input.Keyboard.previousKeyState[i] = CORE.Input.Keyboard.currentKeyState[i];
+        CORE.Input.Keyboard.keyRepeatInFrame[i] = 0;
     }
 
     // TODO: Poll input events for current platform
@@ -449,12 +449,12 @@ int InitPlatform(void)
     // raylib uses OpenGL so, platform should create that kind of connection
     // Below example illustrates that process using EGL library
     //----------------------------------------------------------------------------
-    CORE[0].Window.fullscreen = true;
-    CORE[0].Window.flags |= FLAG_FULLSCREEN_MODE;
+    CORE.Window[0].fullscreen = true;
+    CORE.Window[0].flags |= FLAG_FULLSCREEN_MODE;
 
     EGLint samples = 0;
     EGLint sampleBuffer = 0;
-    if (CORE[0].Window.flags & FLAG_MSAA_4X_HINT)
+    if (CORE.Window[0].flags & FLAG_MSAA_4X_HINT)
     {
         samples = 4;
         sampleBuffer = 1;
@@ -533,18 +533,18 @@ int InitPlatform(void)
     // Check surface and context activation
     if (result != EGL_FALSE)
     {
-        CORE[0].Window.ready = true;
+        CORE.Window[0].ready = true;
 
-        CORE[0].Window.render.width = CORE[0].Window.screen.width;
-        CORE[0].Window.render.height = CORE[0].Window.screen.height;
-        CORE[0].Window.currentFbo.width = CORE[0].Window.render.width;
-        CORE[0].Window.currentFbo.height = CORE[0].Window.render.height;
+        CORE.Window[0].render.width = CORE.Window[0].screen.width;
+        CORE.Window[0].render.height = CORE.Window[0].screen.height;
+        CORE.Window[0].currentFbo.width = CORE.Window[0].render.width;
+        CORE.Window[0].currentFbo.height = CORE.Window[0].render.height;
 
         TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE[0].Window.display.width, CORE[0].Window.display.height);
-        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE[0].Window.screen.width, CORE[0].Window.screen.height);
-        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE[0].Window.render.width, CORE[0].Window.render.height);
-        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE[0].Window.renderOffset.x, CORE[0].Window.renderOffset.y);
+        TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window[0].display.width, CORE.Window[0].display.height);
+        TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window[0].screen.width, CORE.Window[0].screen.height);
+        TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window[0].render.width, CORE.Window[0].render.height);
+        TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window[0].renderOffset.x, CORE.Window[0].renderOffset.y);
     }
     else
     {
@@ -554,16 +554,16 @@ int InitPlatform(void)
     //----------------------------------------------------------------------------
 
     // If everything work as expected, we can continue
-    CORE[0].Window.render.width = CORE[0].Window.screen.width;
-    CORE[0].Window.render.height = CORE[0].Window.screen.height;
-    CORE[0].Window.currentFbo.width = CORE[0].Window.render.width;
-    CORE[0].Window.currentFbo.height = CORE[0].Window.render.height;
+    CORE.Window[0].render.width = CORE.Window[0].screen.width;
+    CORE.Window[0].render.height = CORE.Window[0].screen.height;
+    CORE.Window[0].currentFbo.width = CORE.Window[0].render.width;
+    CORE.Window[0].currentFbo.height = CORE.Window[0].render.height;
 
     TRACELOG(LOG_INFO, "DISPLAY: Device initialized successfully");
-    TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE[0].Window.display.width, CORE[0].Window.display.height);
-    TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE[0].Window.screen.width, CORE[0].Window.screen.height);
-    TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE[0].Window.render.width, CORE[0].Window.render.height);
-    TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE[0].Window.renderOffset.x, CORE[0].Window.renderOffset.y);
+    TRACELOG(LOG_INFO, "    > Display size: %i x %i", CORE.Window[0].display.width, CORE.Window[0].display.height);
+    TRACELOG(LOG_INFO, "    > Screen size:  %i x %i", CORE.Window[0].screen.width, CORE.Window[0].screen.height);
+    TRACELOG(LOG_INFO, "    > Render size:  %i x %i", CORE.Window[0].render.width, CORE.Window[0].render.height);
+    TRACELOG(LOG_INFO, "    > Viewport offsets: %i, %i", CORE.Window[0].renderOffset.x, CORE.Window[0].renderOffset.y);
 
     // TODO: Load OpenGL extensions
     // NOTE: GL procedures address loader is required to load extensions
@@ -586,7 +586,7 @@ int InitPlatform(void)
 
     // TODO: Initialize storage system
     //----------------------------------------------------------------------------
-    CORE[0].Storage.basePath = GetWorkingDirectory();
+    CORE.Storage.basePath = GetWorkingDirectory();
     //----------------------------------------------------------------------------
 
     TRACELOG(LOG_INFO, "PLATFORM: CUSTOM: Initialized successfully");

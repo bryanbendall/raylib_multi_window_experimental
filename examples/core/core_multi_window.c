@@ -55,11 +55,11 @@ int main(void)
     WindowInfo window2 = { 0 };
 
     // each window returns it's own context ID. You must save these to use them
-    // each window must be inited seperately
-	window1.contextId = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 1");
+    // each window must be inited separately
+	window1.contextId = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 1", FLAG_WINDOW_RESIZABLE);
     window1.open = true;
 
-	window2.contextId = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 2");
+	window2.contextId = InitWindowPro(screenWidth, screenHeight, "raylib [core] example - window 2", FLAG_WINDOW_RESIZABLE);
     window2.open = true;
 
     // before we can do anything we have to tell raylib what window context to use.
@@ -95,7 +95,7 @@ int main(void)
         //----------------------------------------------------------------------------------
 
 		window1.position.x += GetFrameTime() * 100;
-		window1.position.y += GetFrameTime() * 100;
+		window2.position.y += GetFrameTime() * 100;
 
         // Draw
         //----------------------------------------------------------------------------------

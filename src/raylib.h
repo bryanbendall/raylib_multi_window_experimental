@@ -957,7 +957,7 @@ extern "C" {            // Prevents name mangling of functions
 
 // Window-related functions
 RLAPI void InitWindow(int width, int height, const char *title);  // Initialize window and OpenGL context
-RLAPI int InitWindowPro(int width, int height, const char* title);  // Initialize a new window and OpenGL context and return it's context
+RLAPI int InitWindowPro(int width, int height, const char* title, unsigned int flags);  // Initialize a new window and OpenGL context and return it's context
 RLAPI int SetActiveWindowContext(int windowId);                   // Set the active window context
 RLAPI void CloseWindow(void);                                     // Close window and unload OpenGL context
 RLAPI bool WindowShouldClose(void);                               // Check if application should close (KEY_ESCAPE pressed or windows close icon clicked)
