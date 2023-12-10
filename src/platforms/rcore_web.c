@@ -980,7 +980,7 @@ static void ErrorCallback(int error, const char *description)
 static void WindowSizeCallback(GLFWwindow *window, int width, int height)
 {
     // Reset viewport and projection matrix for new size
-    SetupViewport(width, height);
+    SetupViewport(width, height, 0);
 
     CORE.Window[0].currentFbo.width = width;
     CORE.Window[0].currentFbo.height = height;
@@ -1217,7 +1217,7 @@ static EM_BOOL EmscriptenResizeCallback(int eventType, const EmscriptenUiEvent *
 
     emscripten_set_canvas_element_size("#canvas", width, height);
 
-    SetupViewport(width, height); // Reset viewport and projection matrix for new size
+    SetupViewport(width, height, 0); // Reset viewport and projection matrix for new size
 
     CORE.Window[0].currentFbo.width = width;
     CORE.Window[0].currentFbo.height = height;

@@ -801,7 +801,7 @@ static void AndroidCommandCallback(struct android_app *app, int32_t cmd)
 
                     // Setup default viewport
                     // NOTE: It updated CORE.Window[0].render.width and CORE.Window[0].render.height
-                    SetupViewport(CORE.Window[0].currentFbo.width, CORE.Window[0].currentFbo.height);
+                    SetupViewport(CORE.Window[0].currentFbo.width, CORE.Window[0].currentFbo.height, 0);
 
                     // Initialize hi-res timer
                     InitTimer();
