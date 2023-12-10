@@ -115,7 +115,7 @@ extern int GetActiveWindowContext();
 
 static PlatformData platform[MAX_WINDOWS] = { 0 };   // Platform specific data
 
-static platformWindowCount = 0;
+static int platformWindowCount = 0;
 
 static bool IsEventWindow()
 {
@@ -1255,14 +1255,19 @@ void PollInputEvents(void)
     CORE.Window[GetActiveWindowContext()].resizedLastFrame = false;
 
     if (IsEventWindow() && CORE.Window[GetActiveWindowContext()].eventWaiting)
+    {
         glfwWaitEvents();     // Wait for in input events before continue (drawing is paused)
-    else 
+    }
+    else
+    {
         glfwPollEvents();      // Poll input events: keyboard/mouse/window events (callbacks) -> Update keys state
-
+    }
 	// While window minimized, stop loop execution
 
-	while (IsWindowState(FLAG_WINDOW_MINIMIZED) && !IsWindowState(FLAG_WINDOW_ALWAYS_RUN))
+    while (IsWindowState(FLAG_WINDOW_MINIMIZED) && !IsWindowState(FLAG_WINDOW_ALWAYS_RUN))
+    {
         glfwWaitEvents();
+    }
 
     CORE.Window[GetActiveWindowContext()].shouldClose = glfwWindowShouldClose(platform[GetActiveWindowContext()].handle);
 
@@ -1660,7 +1665,6 @@ static void ErrorCallback(int error, const char *description)
 
 static int GetWindowIdFromHandle(GLFWwindow* window)
 {
-	int windowID = -1;
 	for (int i = 0; i < MAX_WINDOWS; i++)
 	{
         if (platform[i].handle == window)
