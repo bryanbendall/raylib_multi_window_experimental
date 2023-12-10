@@ -96,7 +96,7 @@ static bool IsEventWindow()
 
 	for (int i = 0; i < MAX_WINDOWS; i++)
 	{
-		if (platform[i].handle != NULL)
+		if (platform[i].window != NULL)
 			return i == GetActiveWindowContext();
 	}
 	return false;
@@ -982,6 +982,16 @@ void SetMouseCursor(int cursor)
     CORE.Input.Mouse.cursor = cursor;
 }
 
+int GetWindowFromID(Uint32 windowId)
+{
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (platform[i].window != NULL && SDL_GetWindowID(platform[i].window) == windowId)
+            return i;
+    }
+    return -1;
+}
+
 // Register all input events
 void PollInputEvents(void)
 {
@@ -1068,44 +1078,37 @@ void PollInputEvents(void)
                 for (int i = 0; i < MAX_WINDOWS; i++)
                 {
                     if (platform[i].window != NULL)
-                        CORE[i].Window.shouldClose = true;
+                        CORE.Window[i].shouldClose = true;
                 }
                 break;
             }
 
             case SDL_DROPFILE:      // Dropped file
             {
-                int focusedWindow = -1;
-                for (int i = 0; i < MAX_WINDOWS; i++)
-                {
-                    Uint32 flags = SDL_GetWindowFlags(platform[i].window);
-                    if (flags & SDL_WINDOW_INPUT_FOCUS == 0 || flags & SDL_WINDOW_MOUSE_FOCUS == 0)
-                    {
-                        focusedWindow = i;
-                        break;
-                    }
+                int eventWndow = GetWindowFromID(event.drop.windowID);
+                if (eventWndow == -1)
+                    break;
 
-                }
-                if (CORE.Window[focusedWindow].dropFileCount == 0)
+                if (CORE.Window[eventWndow].dropFileCount == 0)
                 {
                     // When a new file is dropped, we reserve a fixed number of slots for all possible dropped files
                     // at the moment we limit the number of drops at once to 1024 files but this behaviour should probably be reviewed
                     // TODO: Pointers should probably be reallocated for any new file added...
-                    CORE.Window[focusedWindow].dropFilepaths = (char **)RL_CALLOC(1024, sizeof(char *));
+                    CORE.Window[eventWndow].dropFilepaths = (char **)RL_CALLOC(1024, sizeof(char *));
 
-                    CORE.Window[focusedWindow].dropFilepaths[CORE.Window[focusedWindow].dropFileCount] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
-                    strcpy(CORE.Window[focusedWindow].dropFilepaths[CORE.Window[focusedWindow].dropFileCount], event.drop.file);
+                    CORE.Window[eventWndow].dropFilepaths[CORE.Window[eventWndow].dropFileCount] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
+                    strcpy(CORE.Window[eventWndow].dropFilepaths[CORE.Window[eventWndow].dropFileCount], event.drop.file);
                     SDL_free(event.drop.file);
 
-                    CORE.Window[focusedWindow].dropFileCount++;
+                    CORE.Window[eventWndow].dropFileCount++;
                 }
-                else if (CORE.Window[focusedWindow].dropFileCount < 1024)
+                else if (CORE.Window[eventWndow].dropFileCount < 1024)
                 {
-                    CORE.Window[focusedWindow].dropFilepaths[CORE.Window[focusedWindow].dropFileCount] = (char *)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
-                    strcpy(CORE.Window[focusedWindow].dropFilepaths[CORE.Window[focusedWindow].dropFileCount], event.drop.file);
+                    CORE.Window[eventWndow].dropFilepaths[CORE.Window[eventWndow].dropFileCount] = (char*)RL_CALLOC(MAX_FILEPATH_LENGTH, sizeof(char));
+                    strcpy(CORE.Window[eventWndow].dropFilepaths[CORE.Window[eventWndow].dropFileCount], event.drop.file);
                     SDL_free(event.drop.file);
 
-                    CORE.Window[focusedWindow].dropFileCount++;
+                    CORE.Window[eventWndow].dropFileCount++;
                 }
                 else TRACELOG(LOG_WARNING, "FILE: Maximum drag and drop files at once is limited to 1024 files!");
 
@@ -1114,18 +1117,9 @@ void PollInputEvents(void)
             // Window events are also polled (Minimized, maximized, close...)
             case SDL_WINDOWEVENT:
             {
-                int window = -1;
-                for (int i = 0; i < MAX_WINDOWS; i++)
-                {
-                    if (event.window.windowID == SDL_GetWindowID(platform[i].window))
-                    {
-                        window = i;
-                        break;
-                    }
-                }
-
-                if (window == -1)
-                    break;
+				int eventWndow = GetWindowFromID(event.window.windowID);
+				if (eventWndow == -1)
+					break;
 
                 switch (event.window.event)
                 {
@@ -1134,16 +1128,19 @@ void PollInputEvents(void)
                     {
                         const int width = event.window.data1;
                         const int height = event.window.data2;
-                        SetupViewport(width, height);
-                        CORE.Window[window].screen.width = width;
-                        CORE.Window[window].screen.height = height;
-                        CORE.Window[window].currentFbo.width = width;
-                        CORE.Window[window].currentFbo.height = height;
-                        CORE.Window[window].resizedLastFrame = true;
+                        SDL_GL_MakeCurrent(platform[eventWndow].window, platform[eventWndow].glContext);
+
+                        SetupViewport(width, height, eventWndow);
+                        CORE.Window[eventWndow].screen.width = width;
+                        CORE.Window[eventWndow].screen.height = height;
+                        CORE.Window[eventWndow].currentFbo.width = width;
+                        CORE.Window[eventWndow].currentFbo.height = height;
+                        CORE.Window[eventWndow].resizedLastFrame = true;
+                        SDL_GL_MakeCurrent(platform[GetActiveWindowContext()].window, platform[GetActiveWindowContext()].glContext);
                     } break;
 
                     case SDL_WINDOWEVENT_CLOSE:
-                        CORE.Window[window].shouldClose = true;
+                        CORE.Window[eventWndow].shouldClose = true;
                         break;
                     case SDL_WINDOWEVENT_LEAVE:
                     case SDL_WINDOWEVENT_HIDDEN:
@@ -1172,7 +1169,7 @@ void PollInputEvents(void)
 					for (int i = 0; i < MAX_WINDOWS; i++)
 					{
 						if (platform[i].window != NULL)
-							CORE[i].Window.shouldClose = true;
+							CORE.Window[i].shouldClose = true;
 					}
                 }
             } break;
