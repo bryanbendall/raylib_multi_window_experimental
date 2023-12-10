@@ -828,7 +828,7 @@ int GetRenderWidth(void)
     int width = 0;
 #if defined(__APPLE__)
     Vector2 scale = GetWindowScaleDPI();
-    width = (int)((float)CORE.Window.render.width*scale.x);
+    width = (int)((float)CORE.Window[activeWindowContext].render.width * scale.x);
 #else
     width = CORE.Window[activeWindowContext].render.width;
 #endif
@@ -841,7 +841,7 @@ int GetRenderHeight(void)
     int height = 0;
 #if defined(__APPLE__)
     Vector2 scale = GetWindowScaleDPI();
-    height = (int)((float)CORE.Window.render.height*scale.y);
+    height = (int)((float)CORE.Window[activeWindowContext].render.height*scale.y);
 #else
     height = CORE.Window[activeWindowContext].render.height;
 #endif
@@ -1171,7 +1171,7 @@ void BeginScissorMode(int x, int y, int width, int height)
     rlEnableScissorTest();
 
 #if defined(__APPLE__)
-    if (!CORE.Window.usingFbo)
+    if (!CORE.Window[activeWindowContext].usingFbo)
     {
         Vector2 scale = GetWindowScaleDPI();
         rlScissor((int)(x*scale.x), (int)(GetScreenHeight()*scale.y - (((y + height)*scale.y))), (int)(width*scale.x), (int)(height*scale.y));
