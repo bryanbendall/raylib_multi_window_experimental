@@ -1043,7 +1043,16 @@ void PollInputEvents(void)
         // All input events can be processed after polling
         switch (event.type)
         {
-            case SDL_QUIT: CORE[GetActiveWindowContext()].Window.shouldClose = true; break;
+            case SDL_QUIT: 
+            {
+                // this is per app, we need to kill, ALL windows
+                for (int i = 0; i < MAX_WINDOWS; i++)
+                {
+                    if (platform[i].window != NULL)
+                        CORE[i].Window.shouldClose = true;
+                }
+                break;
+            }
 
             case SDL_DROPFILE:      // Dropped file
             {
@@ -1089,6 +1098,10 @@ void PollInputEvents(void)
                         CORE[GetActiveWindowContext()].Window.currentFbo.height = height;
                         CORE[GetActiveWindowContext()].Window.resizedLastFrame = true;
                     } break;
+
+                    case SDL_WINDOWEVENT_CLOSE:
+                        CORE[GetActiveWindowContext()].Window.shouldClose = true;
+                        break;
                     case SDL_WINDOWEVENT_LEAVE:
                     case SDL_WINDOWEVENT_HIDDEN:
                     case SDL_WINDOWEVENT_MINIMIZED:
