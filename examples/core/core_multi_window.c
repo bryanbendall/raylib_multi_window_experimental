@@ -22,6 +22,7 @@
 ********************************************************************************************/
 
 #include "raylib.h"
+#include "raymath.h"
 
 
 // info we are going to store about each window
@@ -37,9 +38,38 @@ typedef struct WindowInfo
     // where we want draw our thing
     Vector2 position;
 
+    Vector2 velocity;
+
     // a flag to know if we have closed this window or not
     bool open;
 }WindowInfo;
+
+void CheckWindowCollisions(WindowInfo* window)
+{
+    if (window->position.x + window->texture.width > GetScreenWidth())
+    {
+        window->position.x = GetScreenWidth() - window->texture.width;
+        window->velocity.x *= -1;
+    }
+
+    if (window->position.x  < 0)
+    {
+        window->position.x = 0;
+        window->velocity.x *= -1;
+    }
+
+    if (window->position.y + window->texture.height > GetScreenHeight())
+    {
+        window->position.y = GetScreenHeight() - window->texture.height;
+        window->velocity.y *= -1;
+    }
+
+    if (window->position.y < 0)
+    {
+        window->position.y = 0;
+        window->velocity.y *= -1;
+    }
+}
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -83,19 +113,21 @@ int main(void)
     //--------------------------------------------------------------------------------------
 
 	window1.position = (Vector2){ 300,300 };
+    window1.velocity = (Vector2){ 1,1 };
+
 	window2.position = (Vector2){ 500, 300 };
+    window2.velocity = (Vector2){ 1,0 };
 
     // Main game loop
    
     while (window1.open || window2.open)  // run while any window is up
     {
         // Update
-        //----------------------------------------------------------------------------------
-        // TODO: Update your variables here
-        //----------------------------------------------------------------------------------
 
-		window1.position.x += GetFrameTime() * 100;
-		window2.position.y += GetFrameTime() * 100;
+        float speed = 100;
+
+        window1.position = Vector2Add(window1.position, Vector2Scale(window1.velocity, speed * GetFrameTime()));
+        window2.position = Vector2Add(window2.position, Vector2Scale(window2.velocity, speed * GetFrameTime()));
 
         // Draw
         //----------------------------------------------------------------------------------
@@ -103,6 +135,10 @@ int main(void)
         if (window1.open)
         {
             SetActiveWindowContext(window1.contextId);
+
+            // check collisions against window 1 and the window size.
+            // we need to do this in this context so it gets the correct window size.
+            CheckWindowCollisions(&window1);
 
             // do we want to close this window
             if (WindowShouldClose())
@@ -131,6 +167,11 @@ int main(void)
         if (window2.open)
         {
             SetActiveWindowContext(window2.contextId);
+
+            // check collisions against window 1 and the window size.
+               // we need to do this in this context so it gets the correct window size.
+            CheckWindowCollisions(&window2);
+
 			// do we want to close this window
 			if (WindowShouldClose())
 			{
