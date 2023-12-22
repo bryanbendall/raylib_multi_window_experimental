@@ -943,7 +943,18 @@ void EndDrawing(void)
 #if !defined(SUPPORT_CUSTOM_FRAME_CONTROL)
     SwapScreenBuffer();                  // Copy back buffer to front buffer (screen)
 
-    if (activeWindowContext == 0)
+    // we process timing on the lowest window ID
+    bool eventWindow = false;
+    for (int i = 0; i < MAX_WINDOWS; i++)
+    {
+        if (CORE.Window[i].ready && i == activeWindowContext)
+        {
+            eventWindow = true;
+            break;
+        }
+    }
+
+    if (eventWindow)
     {
         // Frame time control system
         CORE.Time.current = GetTime();

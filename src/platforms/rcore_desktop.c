@@ -1808,7 +1808,10 @@ static void KeyCallback(GLFWwindow *window, int key, int scancode, int action, i
     if ((key == CORE.Input.Keyboard.exitKey) && (action == GLFW_PRESS))
     {
         for (int i = 0; i < MAX_WINDOWS; i++)
-            glfwSetWindowShouldClose(platform[i].handle, GLFW_TRUE);
+        {
+            if (platform[i].handle != NULL)
+                glfwSetWindowShouldClose(platform[i].handle, GLFW_TRUE);
+        }
     }
 }
 
