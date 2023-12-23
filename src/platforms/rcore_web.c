@@ -175,8 +175,8 @@ void ToggleFullscreen(void)
     const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
     if (wasFullscreen)
     {
-        if (CORE.Window.flags & FLAG_FULLSCREEN_MODE) enterFullscreen = false;
-        else if (CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) enterFullscreen = true;
+        if (CORE.Window[0].flags & FLAG_FULLSCREEN_MODE) enterFullscreen = false;
+        else if (CORE.Window[0].flags & FLAG_BORDERLESS_WINDOWED_MODE) enterFullscreen = true;
         else
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
@@ -187,9 +187,9 @@ void ToggleFullscreen(void)
 
         EM_ASM(document.exitFullscreen(););
 
-        CORE.Window.fullscreen = false;
-        CORE.Window.flags &= ~FLAG_FULLSCREEN_MODE;
-        CORE.Window.flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
+        CORE.Window[0].fullscreen = false;
+        CORE.Window[0].flags &= ~FLAG_FULLSCREEN_MODE;
+        CORE.Window[0].flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
     }
     else enterFullscreen = true;
 
@@ -202,8 +202,8 @@ void ToggleFullscreen(void)
                 Module.requestFullscreen(false, false);
             }, 100);
         );
-        CORE.Window.fullscreen = true;
-        CORE.Window.flags |= FLAG_FULLSCREEN_MODE;
+        CORE.Window[0].fullscreen = true;
+        CORE.Window[0].flags |= FLAG_FULLSCREEN_MODE;
     }
 
     // NOTE: Old notes below:
@@ -283,8 +283,8 @@ void ToggleBorderlessWindowed(void)
     const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
     if (wasFullscreen)
     {
-        if (CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) enterBorderless = false;
-        else if (CORE.Window.flags & FLAG_FULLSCREEN_MODE) enterBorderless = true;
+        if (CORE.Window[0].flags & FLAG_BORDERLESS_WINDOWED_MODE) enterBorderless = false;
+        else if (CORE.Window[0].flags & FLAG_FULLSCREEN_MODE) enterBorderless = true;
         else
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
@@ -295,9 +295,9 @@ void ToggleBorderlessWindowed(void)
 
         EM_ASM(document.exitFullscreen(););
 
-        CORE.Window.fullscreen = false;
-        CORE.Window.flags &= ~FLAG_FULLSCREEN_MODE;
-        CORE.Window.flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
+        CORE.Window[0].fullscreen = false;
+        CORE.Window[0].flags &= ~FLAG_FULLSCREEN_MODE;
+        CORE.Window[0].flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
     }
     else enterBorderless = true;
 
@@ -315,7 +315,7 @@ void ToggleBorderlessWindowed(void)
                 }, 100);
             }, 100);
         );
-        CORE.Window.flags |= FLAG_BORDERLESS_WINDOWED_MODE;
+        CORE.Window[0].flags |= FLAG_BORDERLESS_WINDOWED_MODE;
     }
 }
 
@@ -358,7 +358,7 @@ void SetWindowState(unsigned int flags)
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
             const int canvasStyleWidth = EM_ASM_INT( { return parseInt(document.getElementById('canvas').style.width); }, 0);
-            if ((CORE.Window.flags & FLAG_FULLSCREEN_MODE) || canvasStyleWidth > canvasWidth) ToggleBorderlessWindowed();
+            if ((CORE.Window[0].flags & FLAG_FULLSCREEN_MODE) || canvasStyleWidth > canvasWidth) ToggleBorderlessWindowed();
         }
         else ToggleBorderlessWindowed();
     }
@@ -372,16 +372,16 @@ void SetWindowState(unsigned int flags)
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
             const int screenWidth = EM_ASM_INT( { return screen.width; }, 0);
-            if ((CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) || screenWidth == canvasWidth ) ToggleFullscreen();
+            if ((CORE.Window[0].flags & FLAG_BORDERLESS_WINDOWED_MODE) || screenWidth == canvasWidth ) ToggleFullscreen();
         }
         else ToggleFullscreen();
     }
 
     // State change: FLAG_WINDOW_RESIZABLE
-    if (((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) != (flags & FLAG_WINDOW_RESIZABLE)) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
+    if (((CORE.Window[0].flags & FLAG_WINDOW_RESIZABLE) != (flags & FLAG_WINDOW_RESIZABLE)) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
     {
         glfwSetWindowAttrib(platform.handle, GLFW_RESIZABLE, GLFW_TRUE);
-        CORE.Window.flags |= FLAG_WINDOW_RESIZABLE;
+        CORE.Window[0].flags |= FLAG_WINDOW_RESIZABLE;
     }
 
     // State change: FLAG_WINDOW_UNDECORATED
@@ -480,10 +480,10 @@ void ClearWindowState(unsigned int flags)
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
             const int screenWidth = EM_ASM_INT( { return screen.width; }, 0);
-            if ((CORE.Window.flags & FLAG_BORDERLESS_WINDOWED_MODE) || (screenWidth == canvasWidth)) EM_ASM(document.exitFullscreen(););
+            if ((CORE.Window[0].flags & FLAG_BORDERLESS_WINDOWED_MODE) || (screenWidth == canvasWidth)) EM_ASM(document.exitFullscreen(););
         }
 
-        CORE.Window.flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
+        CORE.Window[0].flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
     }
 
     // State change: FLAG_FULLSCREEN_MODE
@@ -494,18 +494,18 @@ void ClearWindowState(unsigned int flags)
         {
             const int canvasWidth = EM_ASM_INT( { return document.getElementById('canvas').width; }, 0);
             const int canvasStyleWidth = EM_ASM_INT( { return parseInt(document.getElementById('canvas').style.width); }, 0);
-            if ((CORE.Window.flags & FLAG_FULLSCREEN_MODE) || (canvasStyleWidth > canvasWidth)) EM_ASM(document.exitFullscreen(););
+            if ((CORE.Window[0].flags & FLAG_FULLSCREEN_MODE) || (canvasStyleWidth > canvasWidth)) EM_ASM(document.exitFullscreen(););
         }
 
-        CORE.Window.fullscreen = false;
-        CORE.Window.flags &= ~FLAG_FULLSCREEN_MODE;
+        CORE.Window[0].fullscreen = false;
+        CORE.Window[0].flags &= ~FLAG_FULLSCREEN_MODE;
     }
 
     // State change: FLAG_WINDOW_RESIZABLE
-    if (((CORE.Window.flags & FLAG_WINDOW_RESIZABLE) > 0) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
+    if (((CORE.Window[0].flags & FLAG_WINDOW_RESIZABLE) > 0) && ((flags & FLAG_WINDOW_RESIZABLE) > 0))
     {
         glfwSetWindowAttrib(platform.handle, GLFW_RESIZABLE, GLFW_FALSE);
-        CORE.Window.flags &= ~FLAG_WINDOW_RESIZABLE;
+        CORE.Window[0].flags &= ~FLAG_WINDOW_RESIZABLE;
     }
 
     // State change: FLAG_WINDOW_HIDDEN
@@ -1053,10 +1053,10 @@ int InitPlatform(void)
     // NOTE: Some GLFW flags are not supported on HTML5
     // e.g.: GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_MOUSE_PASSTHROUGH
 
-     if (CORE.Window.flags & FLAG_MSAA_4X_HINT)
+     if (CORE.Window[0].flags & FLAG_MSAA_4X_HINT)
     // Scale content area based on the monitor content scale where window is placed on
     // NOTE: This feature requires emscripten 3.1.51
-    //if ((CORE.Window.flags & FLAG_WINDOW_HIGHDPI) > 0) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+    //if ((CORE.Window[0].flags & FLAG_WINDOW_HIGHDPI) > 0) glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
     //else glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_FALSE);
     if (CORE.Window[0].flags & FLAG_MSAA_4X_HINT)
     {
@@ -1516,16 +1516,16 @@ static void CursorEnterCallback(GLFWwindow *window, int enter)
 static EM_BOOL EmscriptenFullscreenChangeCallback(int eventType, const EmscriptenFullscreenChangeEvent *event, void *userData)
 {
     // NOTE: 1. Reset the fullscreen flags if the user left fullscreen manually by pressing the Escape key
-    //       2. Which is a necessary safeguard because that case will bypass the toggles CORE.Window.flags resets
+    //       2. Which is a necessary safeguard because that case will bypass the toggles CORE.Window[0].flags resets
     if (platform.ourFullscreen) platform.ourFullscreen = false;
     else
     {
         const bool wasFullscreen = EM_ASM_INT( { if (document.fullscreenElement) return 1; }, 0);
         if (!wasFullscreen)
         {
-            CORE.Window.fullscreen = false;
-            CORE.Window.flags &= ~FLAG_FULLSCREEN_MODE;
-            CORE.Window.flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
+            CORE.Window[0].fullscreen = false;
+            CORE.Window[0].flags &= ~FLAG_FULLSCREEN_MODE;
+            CORE.Window[0].flags &= ~FLAG_BORDERLESS_WINDOWED_MODE;
         }
     }
 
