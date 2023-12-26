@@ -130,7 +130,36 @@ int main(void)
         window2.position = Vector2Add(window2.position, Vector2Scale(window2.velocity, speed * GetFrameTime()));
 
         // Draw
-        //----------------------------------------------------------------------------------
+        // process windows backwards because the lowest window ID will call wait time.
+
+        if (window2.open)
+        {
+            SetActiveWindowContext(window2.contextId);
+
+            // check collisions against window 1 and the window size.
+               // we need to do this in this context so it gets the correct window size.
+            CheckWindowCollisions(&window2);
+
+            // do we want to close this window
+            if (WindowShouldClose())
+            {
+                // we need to unload this texture before we kill the context
+                UnloadTexture(window2.texture);
+                CloseWindow();
+                window2.open = false;
+            }
+            else
+            {
+                BeginDrawing();
+
+                ClearBackground(BLACK);
+
+                DrawText("I am the other window", 190, 200, 20, RAYWHITE);
+                DrawTexture(window2.texture, window2.position.x, window2.position.y, WHITE);
+                EndDrawing();
+            }
+        }
+
         // If window 1 is open, process it
         if (window1.open)
         {
@@ -160,35 +189,7 @@ int main(void)
                 DrawTexture(window1.texture, window1.position.x, window1.position.y, WHITE);
                 DrawFPS(0, 0);
 
-                EndDrawing();
-            }
-        }
-
-        if (window2.open)
-        {
-            SetActiveWindowContext(window2.contextId);
-
-            // check collisions against window 1 and the window size.
-               // we need to do this in this context so it gets the correct window size.
-            CheckWindowCollisions(&window2);
-
-			// do we want to close this window
-			if (WindowShouldClose())
-			{
-				// we need to unload this texture before we kill the context
-				UnloadTexture(window2.texture);
-				CloseWindow();
-                window2.open = false;
-			}
-            else
-            {
-				BeginDrawing();
-
-				ClearBackground(BLACK);
-
-				DrawText("I am the other window", 190, 200, 20, RAYWHITE);
-				DrawTexture(window2.texture, window2.position.x, window2.position.y, WHITE);
-				EndDrawing();
+                EndDrawing(); 
             }
         }
     }
