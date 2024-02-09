@@ -1259,8 +1259,8 @@ void PollInputEvents(void)
             {
                 const int touchId = (int)event.tfinger.fingerId;
                 CORE.Input.Touch.currentTouchState[touchId] = 1;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window.screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window.screen.height;
+                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow]screen.width;
+                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow]screen.height;
 
                 touchAction = 1;
                 realTouch = true;
@@ -1269,8 +1269,8 @@ void PollInputEvents(void)
             {
                 const int touchId = (int)event.tfinger.fingerId;
                 CORE.Input.Touch.currentTouchState[touchId] = 0;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window.screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window.screen.height;
+                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow].screen.width;
+                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow].screen.height;
 
                 touchAction = 0;
                 realTouch = true;
@@ -1278,8 +1278,8 @@ void PollInputEvents(void)
             case SDL_FINGERMOTION:
             {
                 const int touchId = (int)event.tfinger.fingerId;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window.screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window.screen.height;
+                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow]screen.width;
+                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow]screen.height;
 
                 touchAction = 2;
                 realTouch = true;
