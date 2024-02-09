@@ -669,11 +669,20 @@
             <Param type="unsigned int" name="frames" desc="" />
         </Callback>
     </Callbacks>
-    <Functions count="559">
+    <Functions count="561">
         <Function name="InitWindow" retType="void" paramCount="3" desc="Initialize window and OpenGL context">
             <Param type="int" name="width" desc="" />
             <Param type="int" name="height" desc="" />
             <Param type="const char *" name="title" desc="" />
+        </Function>
+        <Function name="InitWindowPro" retType="int" paramCount="4" desc="Initialize a new window and OpenGL context and return it's context">
+            <Param type="int" name="width" desc="" />
+            <Param type="int" name="height" desc="" />
+            <Param type="const char*" name="title" desc="" />
+            <Param type="unsigned int" name="flags" desc="" />
+        </Function>
+        <Function name="SetActiveWindowContext" retType="int" paramCount="1" desc="Set the active window context">
+            <Param type="int" name="windowId" desc="" />
         </Function>
         <Function name="CloseWindow" retType="void" paramCount="0" desc="Close window and unload OpenGL context">
         </Function>

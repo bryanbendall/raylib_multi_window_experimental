@@ -3130,6 +3130,40 @@
       ]
     },
     {
+      "name": "InitWindowPro",
+      "description": "Initialize a new window and OpenGL context and return it's context",
+      "returnType": "int",
+      "params": [
+        {
+          "type": "int",
+          "name": "width"
+        },
+        {
+          "type": "int",
+          "name": "height"
+        },
+        {
+          "type": "const char*",
+          "name": "title"
+        },
+        {
+          "type": "unsigned int",
+          "name": "flags"
+        }
+      ]
+    },
+    {
+      "name": "SetActiveWindowContext",
+      "description": "Set the active window context",
+      "returnType": "int",
+      "params": [
+        {
+          "type": "int",
+          "name": "windowId"
+        }
+      ]
+    },
+    {
       "name": "CloseWindow",
       "description": "Close window and unload OpenGL context",
       "returnType": "void"
