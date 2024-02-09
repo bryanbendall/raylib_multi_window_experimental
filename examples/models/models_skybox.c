@@ -7,7 +7,7 @@
 *   Example licensed under an unmodified zlib/libpng license, which is an OSI-certified,
 *   BSD-like license that allows static linking with closed source software
 *
-*   Copyright (c) 2017-2023 Ramon Santamaria (@raysan5)
+*   Copyright (c) 2017-2024 Ramon Santamaria (@raysan5)
 *
 ********************************************************************************************/
 
@@ -194,7 +194,7 @@ static TextureCubemap GenTextureCubemap(Shader shader, Texture2D panorama, int s
     unsigned int rbo = rlLoadTextureDepth(size, size, true);
     cubemap.id = rlLoadTextureCubemap(0, size, format);
 
-    unsigned int fbo = rlLoadFramebuffer(size, size);
+    unsigned int fbo = rlLoadFramebuffer();
     rlFramebufferAttach(fbo, rbo, RL_ATTACHMENT_DEPTH, RL_ATTACHMENT_RENDERBUFFER, 0);
     rlFramebufferAttach(fbo, cubemap.id, RL_ATTACHMENT_COLOR_CHANNEL0, RL_ATTACHMENT_CUBEMAP_POSITIVE_X, 0);
 

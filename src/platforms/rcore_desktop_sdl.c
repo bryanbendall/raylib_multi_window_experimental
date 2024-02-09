@@ -29,7 +29,7 @@
 *
 *   LICENSE: zlib/libpng
 *
-*   Copyright (c) 2013-2023 Ramon Santamaria (@raysan5) and contributors
+*   Copyright (c) 2013-2024 Ramon Santamaria (@raysan5) and contributors
 *
 *   This software is provided "as-is", without any express or implied warranty. In no event
 *   will the authors be held liable for any damages arising from the use of this software.
@@ -64,7 +64,7 @@ typedef struct {
     SDL_Window *window;
     SDL_GLContext glContext;
 
-    SDL_Joystick *gamepad;
+    SDL_Joystick *gamepad[MAX_GAMEPADS];
     SDL_Cursor *cursor;
     bool cursorRelative;
 } PlatformData;
@@ -1182,19 +1182,23 @@ void PollInputEvents(void)
 
             case SDL_TEXTINPUT:
             {
+                // NOTE: event.text.text data comes an UTF-8 text sequence but we register codepoints (int)
+
+                int codepointSize = 0;
+
                 // Check if there is space available in the key queue
                 if (CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE)
                 {
-                    // Add character to the queue
-                    CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = event.text.text[0];
+                    // Add character (key) to the queue
+                    CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = GetCodepointNext(event.text.text, &codepointSize);
                     CORE.Input.Keyboard.keyPressedQueueCount++;
                 }
 
                 // Check if there is space available in the queue
                 if (CORE.Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
                 {
-                    // Add character to the queue
-                    CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = event.text.text[0];
+                    // Add character (codepoint) to the queue
+                    CORE.Input.Keyboard.charPressedQueue[CORE.Input.Keyboard.charPressedQueueCount] = GetCodepointNext(event.text.text, &codepointSize);
                     CORE.Input.Keyboard.charPressedQueueCount++;
                 }
             } break;
@@ -1282,20 +1286,134 @@ void PollInputEvents(void)
             } break;
 
             // Check gamepad events
+            case SDL_JOYDEVICEADDED:
+            {
+                int jid = event.jdevice.which;
+                if (!CORE.Input.Gamepad.ready[jid] && (jid < MAX_GAMEPADS)) {
+                    platform.gamepad[jid] = SDL_JoystickOpen(jid);
+
+                    if (platform.gamepad[jid])
+                    {
+                        CORE.Input.Gamepad.ready[jid] = true;
+                        CORE.Input.Gamepad.axisCount[jid] = SDL_JoystickNumAxes(platform.gamepad[jid]);
+                        CORE.Input.Gamepad.axisState[jid][GAMEPAD_AXIS_LEFT_TRIGGER] = -1.0f;
+                        CORE.Input.Gamepad.axisState[jid][GAMEPAD_AXIS_RIGHT_TRIGGER] = -1.0f;
+                        strncpy(CORE.Input.Gamepad.name[jid], SDL_JoystickName(platform.gamepad[jid]), 63);
+                        CORE.Input.Gamepad.name[jid][63] = '\0';
+                    }
+                    else
+                    {
+                        TRACELOG(LOG_WARNING, "PLATFORM: Unable to open game controller [ERROR: %s]", SDL_GetError());
+                    }
+                }
+            } break;
+            case SDL_JOYDEVICEREMOVED:
+            {
+                int jid = event.jdevice.which;
+                if (jid == SDL_JoystickInstanceID(platform.gamepad[jid])) {
+                    SDL_JoystickClose(platform.gamepad[jid]);
+                    platform.gamepad[jid] = SDL_JoystickOpen(0);
+                    CORE.Input.Gamepad.ready[jid] = false;
+                    memset(CORE.Input.Gamepad.name[jid], 0, 64);
+                }
+            } break;
+            case SDL_JOYBUTTONDOWN:
+            {
+                int button = -1;
+
+                switch (event.jbutton.button)
+                {
+                    case SDL_CONTROLLER_BUTTON_Y: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case SDL_CONTROLLER_BUTTON_B: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case SDL_CONTROLLER_BUTTON_A: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case SDL_CONTROLLER_BUTTON_X: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+
+                    case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+
+                    case SDL_CONTROLLER_BUTTON_BACK: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case SDL_CONTROLLER_BUTTON_GUIDE: button = GAMEPAD_BUTTON_MIDDLE; break;
+                    case SDL_CONTROLLER_BUTTON_START: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+
+                    case SDL_CONTROLLER_BUTTON_LEFTSTICK: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case SDL_CONTROLLER_BUTTON_RIGHTSTICK: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    default: break;
+                }
+
+                if (button >= 0)
+                {
+                    CORE.Input.Gamepad.currentButtonState[event.jbutton.which][button] = 1;
+                    CORE.Input.Gamepad.lastButtonPressed = button;
+                }
+            } break;
+            case SDL_JOYBUTTONUP:
+            {
+                int button = -1;
+
+                switch (event.jbutton.button)
+                {
+                    case SDL_CONTROLLER_BUTTON_Y: button = GAMEPAD_BUTTON_RIGHT_FACE_UP; break;
+                    case SDL_CONTROLLER_BUTTON_B: button = GAMEPAD_BUTTON_RIGHT_FACE_RIGHT; break;
+                    case SDL_CONTROLLER_BUTTON_A: button = GAMEPAD_BUTTON_RIGHT_FACE_DOWN; break;
+                    case SDL_CONTROLLER_BUTTON_X: button = GAMEPAD_BUTTON_RIGHT_FACE_LEFT; break;
+
+                    case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: button = GAMEPAD_BUTTON_LEFT_TRIGGER_1; break;
+                    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: button = GAMEPAD_BUTTON_RIGHT_TRIGGER_1; break;
+
+                    case SDL_CONTROLLER_BUTTON_BACK: button = GAMEPAD_BUTTON_MIDDLE_LEFT; break;
+                    case SDL_CONTROLLER_BUTTON_GUIDE: button = GAMEPAD_BUTTON_MIDDLE; break;
+                    case SDL_CONTROLLER_BUTTON_START: button = GAMEPAD_BUTTON_MIDDLE_RIGHT; break;
+
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: button = GAMEPAD_BUTTON_LEFT_FACE_UP; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: button = GAMEPAD_BUTTON_LEFT_FACE_RIGHT; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: button = GAMEPAD_BUTTON_LEFT_FACE_DOWN; break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: button = GAMEPAD_BUTTON_LEFT_FACE_LEFT; break;
+
+                    case SDL_CONTROLLER_BUTTON_LEFTSTICK: button = GAMEPAD_BUTTON_LEFT_THUMB; break;
+                    case SDL_CONTROLLER_BUTTON_RIGHTSTICK: button = GAMEPAD_BUTTON_RIGHT_THUMB; break;
+                    default: break;
+                }
+
+                if (button >= 0)
+                {
+                    CORE.Input.Gamepad.currentButtonState[event.jbutton.which][button] = 0;
+                    if (CORE.Input.Gamepad.lastButtonPressed == button) CORE.Input.Gamepad.lastButtonPressed = 0;
+                }
+            } break;
             case SDL_JOYAXISMOTION:
             {
-                // Motion on gamepad 0
-                if (event.jaxis.which == 0)
+                int axis = -1;
+
+                switch (event.jaxis.axis)
                 {
-                    // X axis motion
-                    if (event.jaxis.axis == 0)
+                    case SDL_CONTROLLER_AXIS_LEFTX: axis = GAMEPAD_AXIS_LEFT_X; break;
+                    case SDL_CONTROLLER_AXIS_LEFTY: axis = GAMEPAD_AXIS_LEFT_Y; break;
+                    case SDL_CONTROLLER_AXIS_RIGHTX: axis = GAMEPAD_AXIS_RIGHT_X; break;
+                    case SDL_CONTROLLER_AXIS_RIGHTY: axis = GAMEPAD_AXIS_RIGHT_Y; break;
+                    case SDL_CONTROLLER_AXIS_TRIGGERLEFT: axis = GAMEPAD_AXIS_LEFT_TRIGGER; break;
+                    case SDL_CONTROLLER_AXIS_TRIGGERRIGHT: axis = GAMEPAD_AXIS_RIGHT_TRIGGER; break;
+                    default: break;
+                }
+
+                if (axis >= 0)
+                {
+                    // SDL axis value range is -32768 to 32767, we normalize it to RayLib's -1.0 to 1.0f range
+                    float value = event.jaxis.value / (float) 32767;
+                    CORE.Input.Gamepad.axisState[event.jaxis.which][axis] = value;
+
+                    // Register button state for triggers in addition to their axes
+                    if ((axis == GAMEPAD_AXIS_LEFT_TRIGGER) || (axis == GAMEPAD_AXIS_RIGHT_TRIGGER))
                     {
-                        //...
-                    }
-                    // Y axis motion
-                    else if (event.jaxis.axis == 1)
-                    {
-                        //...
+                        int button = (axis == GAMEPAD_AXIS_LEFT_TRIGGER) ? GAMEPAD_BUTTON_LEFT_TRIGGER_2 : GAMEPAD_BUTTON_RIGHT_TRIGGER_2;
+                        int pressed = (value > 0.1f);
+                        CORE.Input.Gamepad.currentButtonState[event.jaxis.which][button] = pressed;
+                        if (pressed) CORE.Input.Gamepad.lastButtonPressed = button;
+                        else if (CORE.Input.Gamepad.lastButtonPressed == button) CORE.Input.Gamepad.lastButtonPressed = 0;
                     }
                 }
             } break;
@@ -1342,8 +1460,7 @@ void PollInputEvents(void)
 // Initialize platform: graphics, inputs and more
 int InitPlatform(void)
 {
-    // Initialize SDL internal global state
-	
+
     int result = 0;
 
     if (platformWindowCount == 0)
@@ -1406,11 +1523,7 @@ int InitPlatform(void)
     {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#if defined(__APPLE__)
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);  // OSX Requires forward compatibility
-#else
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-#endif
     }
     else if (rlGetVersion() == RL_OPENGL_43)
     {
@@ -1486,7 +1599,8 @@ int InitPlatform(void)
 
     // Initialize input events system
     //----------------------------------------------------------------------------
-    if (SDL_NumJoysticks() >= 1)
+    // Initialize gamepads
+    for (int i = 0; (i < SDL_NumJoysticks()) && (i < MAX_GAMEPADS); i++)
     {
         platform[GetActiveWindowContext()].gamepad = SDL_JoystickOpen(0);
         //if (platform[GetActiveWindowContext()].gamepadgamepad == NULL) TRACELOG(LOG_WARNING, "PLATFORM: Unable to open game controller [ERROR: %s]", SDL_GetError());
@@ -1504,6 +1618,10 @@ int InitPlatform(void)
     //----------------------------------------------------------------------------
     // NOTE: No need to call InitTimer(), let SDL manage it internally
     CORE.Time.previous = GetTime();     // Get time as double
+
+    #if defined(_WIN32) && defined(SUPPORT_WINMM_HIGHRES_TIMER) && !defined(SUPPORT_BUSY_WAIT_LOOP)
+    SDL_SetHint(SDL_HINT_TIMER_RESOLUTION, "1");     // SDL equivalent of timeBeginPeriod() and timeEndPeriod()
+    #endif
     //----------------------------------------------------------------------------
 
     // Initialize storage system

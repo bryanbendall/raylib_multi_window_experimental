@@ -1233,11 +1233,6 @@
         },
         {
           "type": "float",
-          "name": "vScreenCenter",
-          "description": "Screen center in meters"
-        },
-        {
-          "type": "float",
           "name": "eyeToScreenDistance",
           "description": "Distance between eye and display in meters"
         },
@@ -2074,7 +2069,7 @@
         },
         {
           "name": "KEY_MENU",
-          "value": 82,
+          "value": 5,
           "description": "Key: Android menu button"
         },
         {
@@ -3892,24 +3887,25 @@
       ]
     },
     {
-      "name": "GetCameraMatrix",
-      "description": "Get camera transform matrix (view matrix)",
-      "returnType": "Matrix",
+      "name": "GetViewRay",
+      "description": "Get a ray trace from mouse position in a viewport",
+      "returnType": "Ray",
       "params": [
+        {
+          "type": "Vector2",
+          "name": "mousePosition"
+        },
         {
           "type": "Camera",
           "name": "camera"
-        }
-      ]
-    },
-    {
-      "name": "GetCameraMatrix2D",
-      "description": "Get camera 2d transform matrix",
-      "returnType": "Matrix",
-      "params": [
+        },
         {
-          "type": "Camera2D",
-          "name": "camera"
+          "type": "float",
+          "name": "width"
+        },
+        {
+          "type": "float",
+          "name": "height"
         }
       ]
     },
@@ -3924,21 +3920,6 @@
         },
         {
           "type": "Camera",
-          "name": "camera"
-        }
-      ]
-    },
-    {
-      "name": "GetScreenToWorld2D",
-      "description": "Get the world space position for a 2d camera screen space position",
-      "returnType": "Vector2",
-      "params": [
-        {
-          "type": "Vector2",
-          "name": "position"
-        },
-        {
-          "type": "Camera2D",
           "name": "camera"
         }
       ]
@@ -3975,6 +3956,43 @@
           "type": "Vector2",
           "name": "position"
         },
+        {
+          "type": "Camera2D",
+          "name": "camera"
+        }
+      ]
+    },
+    {
+      "name": "GetScreenToWorld2D",
+      "description": "Get the world space position for a 2d camera screen space position",
+      "returnType": "Vector2",
+      "params": [
+        {
+          "type": "Vector2",
+          "name": "position"
+        },
+        {
+          "type": "Camera2D",
+          "name": "camera"
+        }
+      ]
+    },
+    {
+      "name": "GetCameraMatrix",
+      "description": "Get camera transform matrix (view matrix)",
+      "returnType": "Matrix",
+      "params": [
+        {
+          "type": "Camera",
+          "name": "camera"
+        }
+      ]
+    },
+    {
+      "name": "GetCameraMatrix2D",
+      "description": "Get camera 2d transform matrix",
+      "returnType": "Matrix",
+      "params": [
         {
           "type": "Camera2D",
           "name": "camera"
@@ -4637,7 +4655,7 @@
       "returnType": "void",
       "params": [
         {
-          "type": "AutomationEventList *",
+          "type": "AutomationEventList",
           "name": "list"
         }
       ]
@@ -5171,6 +5189,16 @@
           "name": "source"
         }
       ]
+    },
+    {
+      "name": "GetShapesTexture",
+      "description": "Get texture that is used for shapes drawing",
+      "returnType": "Texture2D"
+    },
+    {
+      "name": "GetShapesTextureRectangle",
+      "description": "Get texture source rectangle that is used for shapes drawing",
+      "returnType": "Rectangle"
     },
     {
       "name": "DrawPixel",
@@ -6696,6 +6724,29 @@
         {
           "type": "const char *",
           "name": "fileName"
+        },
+        {
+          "type": "int *",
+          "name": "frames"
+        }
+      ]
+    },
+    {
+      "name": "LoadImageAnimFromMemory",
+      "description": "Load image sequence from memory buffer",
+      "returnType": "Image",
+      "params": [
+        {
+          "type": "const char *",
+          "name": "fileType"
+        },
+        {
+          "type": "const unsigned char *",
+          "name": "fileData"
+        },
+        {
+          "type": "int",
+          "name": "dataSize"
         },
         {
           "type": "int *",
@@ -9194,7 +9245,7 @@
       "returnType": "char *",
       "params": [
         {
-          "type": "char *",
+          "type": "const char *",
           "name": "text"
         },
         {
@@ -9335,6 +9386,17 @@
       "name": "TextToInteger",
       "description": "Get integer value from text (negative values not supported)",
       "returnType": "int",
+      "params": [
+        {
+          "type": "const char *",
+          "name": "text"
+        }
+      ]
+    },
+    {
+      "name": "TextToFloat",
+      "description": "Get float value from text (negative values not supported)",
+      "returnType": "float",
       "params": [
         {
           "type": "const char *",
@@ -10220,21 +10282,6 @@
       ]
     },
     {
-      "name": "ExportMesh",
-      "description": "Export mesh data to file, returns true on success",
-      "returnType": "bool",
-      "params": [
-        {
-          "type": "Mesh",
-          "name": "mesh"
-        },
-        {
-          "type": "const char *",
-          "name": "fileName"
-        }
-      ]
-    },
-    {
       "name": "GetMeshBoundingBox",
       "description": "Compute mesh bounding box limits",
       "returnType": "BoundingBox",
@@ -10253,6 +10300,36 @@
         {
           "type": "Mesh *",
           "name": "mesh"
+        }
+      ]
+    },
+    {
+      "name": "ExportMesh",
+      "description": "Export mesh data to file, returns true on success",
+      "returnType": "bool",
+      "params": [
+        {
+          "type": "Mesh",
+          "name": "mesh"
+        },
+        {
+          "type": "const char *",
+          "name": "fileName"
+        }
+      ]
+    },
+    {
+      "name": "ExportMeshAsCode",
+      "description": "Export mesh as code file (.h) defining multiple arrays of vertex attributes",
+      "returnType": "bool",
+      "params": [
+        {
+          "type": "Mesh",
+          "name": "mesh"
+        },
+        {
+          "type": "const char *",
+          "name": "fileName"
         }
       ]
     },

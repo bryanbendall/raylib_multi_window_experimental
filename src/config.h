@@ -6,7 +6,7 @@
 *
 *   LICENSE: zlib/libpng
 *
-*   Copyright (c) 2018-2023 Ahmad Fatoum & Ramon Santamaria (@raysan5)
+*   Copyright (c) 2018-2024 Ahmad Fatoum & Ramon Santamaria (@raysan5)
 *
 *   This software is provided "as-is", without any express or implied warranty. In no event
 *   will the authors be held liable for any damages arising from the use of this software.
@@ -181,6 +181,7 @@
 // Selected desired font fileformats to be supported for loading
 #define SUPPORT_FILEFORMAT_FNT          1
 #define SUPPORT_FILEFORMAT_TTF          1
+#define SUPPORT_FILEFORMAT_BDF          1
 
 // Support text management functions
 // If not defined, still some functions are supported: TextLength(), TextFormat()
