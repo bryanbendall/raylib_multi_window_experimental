@@ -964,6 +964,21 @@ int SetGamepadMappings(const char *mappings)
     return SDL_GameControllerAddMapping(mappings);
 }
 
+// Set gamepad vibration
+void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor)
+{
+    //Limit input values to between 0.0f and 1.0f
+    leftMotor  = (0.0f > leftMotor)  ? 0.0f : leftMotor;
+    rightMotor = (0.0f > rightMotor) ? 0.0f : rightMotor;
+    leftMotor  = (1.0f < leftMotor)  ? 1.0f : leftMotor;
+    rightMotor = (1.0f < rightMotor) ? 1.0f : rightMotor;
+
+    if (IsGamepadAvailable(gamepad))
+    {
+        SDL_JoystickRumble(platform.gamepad[gamepad], (Uint16)(leftMotor*65535.0f), (Uint16)(rightMotor*65535.0f), (Uint32)(MAX_GAMEPAD_VIBRATION_TIME*1000.0f));
+    }
+}
+
 // Set mouse position XY
 void SetMousePosition(int x, int y)
 {
@@ -991,8 +1006,21 @@ int GetWindowFromID(Uint32 windowId)
     }
     return -1;
 }
+static void UpdateTouchPointsSDL(SDL_TouchFingerEvent event)
+{
+    CORE.Input.Touch.pointCount = SDL_GetNumTouchFingers(event.touchId);
 
-// Register all input events
+    for (int i = 0; i < CORE.Input.Touch.pointCount; i++)
+    {
+        SDL_Finger *finger = SDL_GetTouchFinger(event.touchId, i);
+        CORE.Input.Touch.pointId[i] = finger->id;
+        CORE.Input.Touch.position[i].x = finger->x*CORE.Window.screen.width;
+        CORE.Input.Touch.position[i].y = finger->y*CORE.Window.screen.height;
+        CORE.Input.Touch.currentTouchState[i] = 1;
+    }
+
+    for (int i = CORE.Input.Touch.pointCount; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.currentTouchState[i] = 0;
+}// Register all input events
 void PollInputEvents(void)
 {
 #if defined(SUPPORT_GESTURES_SYSTEM)
@@ -1023,15 +1051,7 @@ void PollInputEvents(void)
     // Register previous touch states
     for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
 
-    // Reset touch positions
-    // TODO: It resets on target platform the mouse position and not filled again until a move-event,
-    // so, if mouse is not moved it returns a (0, 0) position... this behaviour should be reviewed!
-    //for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.position[i] = (Vector2){ 0, 0 };
-
     // Map touch position to mouse position for convenience
-    // WARNING: If the target desktop device supports touch screen, this behavious should be reviewed!
-    // https://www.codeproject.com/Articles/668404/Programming-for-Multi-Touch
-    // https://docs.microsoft.com/en-us/windows/win32/wintouch/getting-started-with-multi-touch-messages
     CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
 
     int touchAction = -1;       // 0-TOUCH_ACTION_UP, 1-TOUCH_ACTION_DOWN, 2-TOUCH_ACTION_MOVE
@@ -1138,15 +1158,19 @@ void PollInputEvents(void)
                         CORE.Window[eventWndow].resizedLastFrame = true;
                         SDL_GL_MakeCurrent(platform[GetActiveWindowContext()].window, platform[GetActiveWindowContext()].glContext);
                     } break;
-
+                    case SDL_WINDOWEVENT_ENTER:
+                    {
+                        CORE.Input.Mouse.cursorOnScreen = true;
+                    } break;
                     case SDL_WINDOWEVENT_CLOSE:
                         CORE.Window[eventWndow].shouldClose = true;
-                        break;
-                    case SDL_WINDOWEVENT_LEAVE:
+                        break;                    case SDL_WINDOWEVENT_LEAVE:
+                    {
+                        CORE.Input.Mouse.cursorOnScreen = false;
+                    } break;
                     case SDL_WINDOWEVENT_HIDDEN:
                     case SDL_WINDOWEVENT_MINIMIZED:
                     case SDL_WINDOWEVENT_FOCUS_LOST:
-                    case SDL_WINDOWEVENT_ENTER:
                     case SDL_WINDOWEVENT_SHOWN:
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
                     case SDL_WINDOWEVENT_MAXIMIZED:
@@ -1159,7 +1183,17 @@ void PollInputEvents(void)
             case SDL_KEYDOWN:
             {
                 KeyboardKey key = ConvertScancodeToKey(event.key.keysym.scancode);
-                if (key != KEY_NULL) CORE.Input.Keyboard.currentKeyState[key] = 1;
+
+                if (key != KEY_NULL) {
+                    // If key was up, add it to the key pressed queue
+                    if ((CORE.Input.Keyboard.currentKeyState[key] == 0) && (CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE))
+                    {
+                        CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = key;
+                        CORE.Input.Keyboard.keyPressedQueueCount++;
+                    }
+
+                    CORE.Input.Keyboard.currentKeyState[key] = 1;
+                }
 
                 if (event.key.repeat) CORE.Input.Keyboard.keyRepeatInFrame[key] = 1;
 
@@ -1185,14 +1219,6 @@ void PollInputEvents(void)
                 // NOTE: event.text.text data comes an UTF-8 text sequence but we register codepoints (int)
 
                 int codepointSize = 0;
-
-                // Check if there is space available in the key queue
-                if (CORE.Input.Keyboard.keyPressedQueueCount < MAX_KEY_PRESSED_QUEUE)
-                {
-                    // Add character (key) to the queue
-                    CORE.Input.Keyboard.keyPressedQueue[CORE.Input.Keyboard.keyPressedQueueCount] = GetCodepointNext(event.text.text, &codepointSize);
-                    CORE.Input.Keyboard.keyPressedQueueCount++;
-                }
 
                 // Check if there is space available in the queue
                 if (CORE.Input.Keyboard.charPressedQueueCount < MAX_CHAR_PRESSED_QUEUE)
@@ -1253,35 +1279,19 @@ void PollInputEvents(void)
                 touchAction = 2;
             } break;
 
-            // Check touch events
-            // NOTE: These cases need to be reviewed on a real touch screen
             case SDL_FINGERDOWN:
             {
-                const int touchId = (int)event.tfinger.fingerId;
-                CORE.Input.Touch.currentTouchState[touchId] = 1;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow]screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow]screen.height;
-
-                touchAction = 1;
+                UpdateTouchPointsSDL(event.tfinger);                touchAction = 1;
                 realTouch = true;
             } break;
             case SDL_FINGERUP:
             {
-                const int touchId = (int)event.tfinger.fingerId;
-                CORE.Input.Touch.currentTouchState[touchId] = 0;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow].screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow].screen.height;
-
-                touchAction = 0;
+                UpdateTouchPointsSDL(event.tfinger);touchAction = 0;
                 realTouch = true;
             } break;
             case SDL_FINGERMOTION:
             {
-                const int touchId = (int)event.tfinger.fingerId;
-                CORE.Input.Touch.position[touchId].x = event.tfinger.x * CORE.Window[eventWndow]screen.width;
-                CORE.Input.Touch.position[touchId].y = event.tfinger.y * CORE.Window[eventWndow]screen.height;
-
-                touchAction = 2;
+                UpdateTouchPointsSDL(event.tfinger);touchAction = 2;
                 realTouch = true;
             } break;
 
@@ -1289,7 +1299,9 @@ void PollInputEvents(void)
             case SDL_JOYDEVICEADDED:
             {
                 int jid = event.jdevice.which;
-                if (!CORE.Input.Gamepad.ready[jid] && (jid < MAX_GAMEPADS)) {
+
+                if (!CORE.Input.Gamepad.ready[jid] && (jid < MAX_GAMEPADS))
+                {
                     platform.gamepad[jid] = SDL_JoystickOpen(jid);
 
                     if (platform.gamepad[jid])
@@ -1310,7 +1322,9 @@ void PollInputEvents(void)
             case SDL_JOYDEVICEREMOVED:
             {
                 int jid = event.jdevice.which;
-                if (jid == SDL_JoystickInstanceID(platform.gamepad[jid])) {
+
+                if (jid == SDL_JoystickInstanceID(platform.gamepad[jid]))
+                {
                     SDL_JoystickClose(platform.gamepad[jid]);
                     platform.gamepad[jid] = SDL_JoystickOpen(0);
                     CORE.Input.Gamepad.ready[jid] = false;

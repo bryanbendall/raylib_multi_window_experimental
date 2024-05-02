@@ -74,7 +74,6 @@
 
     //#define GLFW_EXPOSE_NATIVE_X11      // WARNING: Exposing Xlib.h > X.h results in dup symbols for Font type
     //#define GLFW_EXPOSE_NATIVE_WAYLAND
-    //#define GLFW_EXPOSE_NATIVE_MIR
     #include "GLFW/glfw3native.h"       // Required for: glfwGetX11Window()
 #endif
 #if defined(__APPLE__)
@@ -83,15 +82,6 @@
     //#define GLFW_EXPOSE_NATIVE_COCOA    // WARNING: Fails due to type redefinition
     void *glfwGetCocoaWindow(GLFWwindow* handle);
     #include "GLFW/glfw3native.h"       // Required for: glfwGetCocoaWindow()
-#endif
-
-//----------------------------------------------------------------------------------
-// Defines and Macros
-//----------------------------------------------------------------------------------
-// TODO: HACK: Added flag if not provided by GLFW when using external library
-// Latest GLFW release (GLFW 3.3.8) does not implement this flag, it was added for 3.4.0-dev
-#if !defined(GLFW_MOUSE_PASSTHROUGH)
-    #define GLFW_MOUSE_PASSTHROUGH      0x0002000D
 #endif
 
 //----------------------------------------------------------------------------------
@@ -1004,6 +994,8 @@ void EnableCursor(void)
     // Set cursor position in the middle
     SetMousePosition(CORE.Window[GetActiveWindowContext()].screen.width/2, CORE.Window[GetActiveWindowContext()].screen.height/2);
 
+    if (glfwRawMouseMotionSupported()) glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_RAW_MOUSE_MOTION, GLFW_FALSE);
+
     CORE.Input.Mouse.cursorHidden = false;
 }
 
@@ -1014,6 +1006,8 @@ void DisableCursor(void)
 
     // Set cursor position in the middle
     SetMousePosition(CORE.Window[GetActiveWindowContext()].screen.width/2, CORE.Window[GetActiveWindowContext()].screen.height/2);
+
+    if (glfwRawMouseMotionSupported()) glfwSetInputMode(platform[GetActiveWindowContext()].handle, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
 
     CORE.Input.Mouse.cursorHidden = true;
 }
@@ -1070,6 +1064,12 @@ void OpenURL(const char *url)
 int SetGamepadMappings(const char *mappings)
 {
     return glfwUpdateGamepadMappings(mappings);
+}
+
+// Set gamepad vibration
+void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor)
+{
+    TRACELOG(LOG_WARNING, "GamepadSetVibration() not available on target platform");
 }
 
 // Set mouse position XY
@@ -1428,7 +1428,7 @@ int InitPlatform(void)
 
     if (CORE.Window[GetActiveWindowContext()].fullscreen)
     {
-        // remember center for switchinging from fullscreen to window
+        // Remember center for switchinging from fullscreen to window
         if ((CORE.Window[GetActiveWindowContext()].screen.height == CORE.Window[GetActiveWindowContext()].display.height) && (CORE.Window[GetActiveWindowContext()].screen.width == CORE.Window[GetActiveWindowContext()].display.width))
         {
             // If screen width/height equal to the display, we can't calculate the window pos for toggling full-screened/windowed.
@@ -1565,8 +1565,21 @@ int InitPlatform(void)
     if ((CORE.Window[GetActiveWindowContext()].flags & FLAG_WINDOW_MINIMIZED) > 0) MinimizeWindow();
 
     // If graphic device is no properly initialized, we end program
-    if (!CORE.Window[GetActiveWindowContext()].ready) { TRACELOG(LOG_FATAL, "PLATFORM: Failed to initialize graphic device"); return -1; }
-    else SetWindowPosition(GetMonitorWidth(GetCurrentMonitor())/2 - CORE.Window[GetActiveWindowContext()].screen.width/2, GetMonitorHeight(GetCurrentMonitor())/2 - CORE.Window[GetActiveWindowContext()].screen.height/2);
+  else
+    {
+        // Try to center window on screen but avoiding window-bar outside of screen
+        int monitorX = 0;
+        int monitorY = 0;
+        int monitorWidth = 0;
+        int monitorHeight = 0;
+        glfwGetMonitorWorkarea(monitor, &monitorX, &monitorY, &monitorWidth, &monitorHeight);
+
+        int posX = monitorX + (monitorWidth - CORE.Window[GetActiveWindowContext()].screen.width)/2;
+        int posY = monitorY + (monitorHeight - CORE.Window[GetActiveWindowContext()].screen.height)/2;
+        if (posX < monitorX) posX = monitorX;
+        if (posY < monitorY) posY = monitorY;
+        SetWindowPosition(posX, posY);
+    }
 
     // Load OpenGL extensions
     // NOTE: GL procedures address loader is required to load extensions
@@ -1615,6 +1628,17 @@ int InitPlatform(void)
     CORE.Storage.basePath = GetWorkingDirectory();
     //----------------------------------------------------------------------------
 
+    char* glfwPlatform = "";
+    switch (glfwGetPlatform())
+    {
+        case GLFW_PLATFORM_WIN32:   glfwPlatform = "Win32";   break;
+        case GLFW_PLATFORM_COCOA:   glfwPlatform = "Cocoa";   break;
+        case GLFW_PLATFORM_WAYLAND: glfwPlatform = "Wayland"; break;
+        case GLFW_PLATFORM_X11:     glfwPlatform = "X11";     break;
+        case GLFW_PLATFORM_NULL:    glfwPlatform = "Null";    break;
+    }
+
+    TRACELOG(LOG_INFO, "GLFW platform: %s", glfwPlatform);
     TRACELOG(LOG_INFO, "PLATFORM: DESKTOP (GLFW): Initialized successfully");
 
     return 0;
@@ -1833,7 +1857,7 @@ static void MouseButtonCallback(GLFWwindow *window, int button, int action, int 
     // but future releases may add more actions (i.e. GLFW_REPEAT)
     CORE.Input.Mouse.currentButtonState[button] = action;
     CORE.Input.Touch.currentTouchState[button] = action;
-    
+
 #if defined(SUPPORT_GESTURES_SYSTEM) && defined(SUPPORT_MOUSE_GESTURES)
     // Process mouse events as touches to be able to use mouse-gestures
     GestureEvent gestureEvent = { 0 };
