@@ -15,12 +15,12 @@ This redirects all raylib and OpenGL calls to the window you specify.
 Call SetActiveWindowContext anytime you want to change windows.
 
 ### Limitations
-# The max number of windows is hardcoded in config.h with a #define. The default is 4
-# Every window has it's own OpenGL context, thus must load it's own textures, shaders, and models. Textures, shaders, and models loaded in one window context will not be availabie in a different window context. Thus you must call LoadTexture for every window that needs a texture, even if it's the same file used in another window.
-# Only the first window gets input.
-# WindowShouldClose works on the active window, if you have multiple windows you need to check it for each window and choose when you want to exit your game loop.
-# Is is your job to know what windows are open and closed.
-# Only the call to EndDrawing for the first window will process the thread sleep/wait for any FPS counters. It is best to process the first window last.
+  * The max number of windows is hardcoded in config.h with a #define. The default is 4
+  * Every window has it's own OpenGL context, thus must load it's own textures, shaders, and models. Textures, shaders, and models loaded in one window context will not be availabie in a different window context. Thus you must call LoadTexture for every window that needs a texture, even if it's the same file used in another window.
+  * Only the first window gets input.
+  * WindowShouldClose works on the active window, if you have multiple windows you need to check it for each window and choose when you want to exit your game loop.
+  * Is is your job to know what windows are open and closed.
+  * Only the call to EndDrawing for the first window will process the thread sleep/wait for any FPS counters. It is best to process the first window last.
 
 **raylib is a simple and easy-to-use library to enjoy videogames programming.**
 
