@@ -1,7 +1,7 @@
 <img align="left" style="width:260px" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_logo_animation.gif" width="288px">
 
 # Multi-Window Branch.
-This is a branch of raylib 5.0 that supports multiple windows.
+This is an experimental branch of raylib 5.0 that supports multiple windows.
 See the example 'core-multi-window' for info on how to create multiple windows (up to 4)
 
 
