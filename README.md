@@ -7,6 +7,21 @@ There are changes to the API that are not compatible with base raylib, and signi
 This fork is not automatically synced with mainline raylib and is manually updated when time allows.
 Use this code at your own risk, testing is minimal.
 
+## Useage
+Call InitWindowPro instead of InitWindow. It will return a window ID. For multiple windows call InitWindowPro multiple times.
+The return value from InitWindowPro must be saved by the application for use in other API calls.
+To set the active window, call SetActiveWindowContext with the window ID of the window you want to use.
+This redirects all raylib and OpenGL calls to the window you specify.
+Call SetActiveWindowContext anytime you want to change windows.
+
+### Limitations
+# The max number of windows is hardcoded in config.h with a #define. The default is 4
+# Every window has it's own OpenGL context, thus must load it's own textures, shaders, and models. Textures, shaders, and models loaded in one window context will not be availabie in a different window context. Thus you must call LoadTexture for every window that needs a texture, even if it's the same file used in another window.
+# Only the first window gets input.
+# WindowShouldClose works on the active window, if you have multiple windows you need to check it for each window and choose when you want to exit your game loop.
+# Is is your job to know what windows are open and closed.
+# Only the call to EndDrawing for the first window will process the thread sleep/wait for any FPS counters. It is best to process the first window last.
+
 **raylib is a simple and easy-to-use library to enjoy videogames programming.**
 
 raylib is highly inspired by Borland BGI graphics lib and by XNA framework and it's especially well suited for prototyping, tooling, graphical applications, embedded systems and education.
