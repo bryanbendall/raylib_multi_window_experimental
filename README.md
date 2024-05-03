@@ -22,6 +22,7 @@ Call SetActiveWindowContext anytime you want to change windows.
   * Is is your job to know what windows are open and closed.
   * Only the call to EndDrawing for the first window will process the thread sleep/wait for any FPS counters. It is best to process the first window last.
 
+# Raylib Readme
 **raylib is a simple and easy-to-use library to enjoy videogames programming.**
 
 raylib is highly inspired by Borland BGI graphics lib and by XNA framework and it's especially well suited for prototyping, tooling, graphical applications, embedded systems and education.
