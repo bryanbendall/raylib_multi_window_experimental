@@ -1,5 +1,3 @@
-<img align="left" style="width:260px" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_logo_animation.gif" width="288px">
-
 # Multi-Window Fork.
 This is an experimental fork of raylib 5.0 that supports multiple windows.
 See the example 'core-multi-window' for info on how to create multiple windows (up to 4)
@@ -23,7 +21,8 @@ Call SetActiveWindowContext anytime you want to change windows.
   * Only the call to EndDrawing for the first window will process the thread sleep/wait for any FPS counters. It is best to process the first window last.
 
 # Raylib Readme
-**raylib is a simple and easy-to-use library to enjoy videogames programming.**
+<img align="left" style="width:260px" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_logo_animation.gif" width="288px">
+ **raylib is a simple and easy-to-use library to enjoy videogames programming.**
 
 raylib is highly inspired by Borland BGI graphics lib and by XNA framework and it's especially well suited for prototyping, tooling, graphical applications, embedded systems and education.
 
