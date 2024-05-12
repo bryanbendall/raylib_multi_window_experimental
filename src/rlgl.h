@@ -1129,7 +1129,7 @@ static rlglData* FindContext(int context)
     return &RLGLDataHead->Data;
 }
 
-static int rlSetActiveContext(int context)
+RLAPI int rlSetActiveContext(int context)
 {
     rlActiveContextPtr = FindContext(context);
     rlActiveContext = context;
@@ -1177,6 +1177,10 @@ static inline rlglData* GetActiveContext()
 
 #define RLGL (*GetActiveContext())
 
+#else
+RLAPI int rlSetActiveContext(int context) {}
+static void rlDestoryContext(int context) {}
+#define RLGL NULL
 #endif  // GRAPHICS_API_OPENGL_33 || GRAPHICS_API_OPENGL_ES2
 
 #if defined(GRAPHICS_API_OPENGL_ES2) && !defined(GRAPHICS_API_OPENGL_ES3)
