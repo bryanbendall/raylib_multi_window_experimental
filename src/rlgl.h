@@ -790,8 +790,7 @@ RLAPI void rlLoadDrawCube(void);     // Load and draw a cube
 RLAPI void rlLoadDrawQuad(void);     // Load and draw a quad
 
 // Multiple Context API
-RLAPI int rlSetActiveContext(int context);     // Sets the active context
-
+RLAPI int rlSetActiveContext(int context);     // Sets the active context, creates it if needed
 
 #if defined(__cplusplus)
 }
@@ -1095,28 +1094,88 @@ static double rlCullDistanceFar = RL_CULL_DISTANCE_FAR;
 
 #if defined(GRAPHICS_API_OPENGL_33) || defined(GRAPHICS_API_OPENGL_ES2)
 
-#ifndef MAX_WINDOWS
-#ifdef PLATFORM_DESKTOP
-#define MAX_WINDOWS 4
-#else
-#define MAX_WINDOWS 1  
-#endif // desktops
-#endif // !MAX_WINDOWS
-
-static rlglData RLGLData[MAX_WINDOWS] = {0};
-
-static int rlActiveContext = 0;
-
-int rlSetActiveContext(int context)
+// linked list for rlgl data
+typedef struct rlglDataItem
 {
-    if (context < 0 || context >= MAX_WINDOWS)
-        return -1;
+    int ContextId;
+    rlglData Data;
+    struct rlglDataItem* Next;
+}rlglDataItem;
 
+static rlglDataItem* RLGLDataHead = { 0 };
+
+// active cache
+static int rlActiveContext = 0;
+static rlglData* rlActiveContextPtr = NULL;
+
+static rlglData* FindContext(int context)
+{
+    rlglDataItem* data = RLGLDataHead;
+    while (data != NULL)
+    {
+        if (data->ContextId == context)
+            return &data->Data;
+
+        data = data->Next;
+    }
+
+    // insert at the start
+    rlglDataItem* newItem = RL_MALLOC(sizeof(rlglDataItem));
+    memset(&newItem->Data, 0, sizeof(rlglData));
+    newItem->ContextId = context;
+    newItem->Next = RLGLDataHead;
+
+    RLGLDataHead = newItem;
+    return &RLGLDataHead->Data;
+}
+
+static int rlSetActiveContext(int context)
+{
+    rlActiveContextPtr = FindContext(context);
     rlActiveContext = context;
     return rlActiveContext;
 }
 
-#define RLGL RLGLData[rlActiveContext]
+static void rlDestoryContext(int context)
+{
+    rlglDataItem* data = RLGLDataHead;
+    rlglDataItem* previous = NULL;
+    while (data != NULL)
+    {
+        if (data->ContextId == context)
+        {
+            // we must be the head
+            if (previous == NULL)
+                RLGLDataHead = data->Next;
+            else
+                previous->Next = data->Next;
+
+            if (rlActiveContext == context)
+            {
+                rlActiveContextPtr = RLGLDataHead;
+                if (RLGLDataHead)
+                    rlActiveContext = RLGLDataHead->ContextId;
+                else
+                    rlActiveContext = NULL;
+            }
+
+            RL_FREE(data);
+            return;
+        }
+        previous = data;
+        data = data->Next;
+    }
+}
+
+static inline rlglData* GetActiveContext()
+{
+    if (rlActiveContextPtr == NULL)
+        rlSetActiveContext(rlActiveContext);
+
+    return rlActiveContextPtr;
+}
+
+#define RLGL (*GetActiveContext())
 
 #endif  // GRAPHICS_API_OPENGL_33 || GRAPHICS_API_OPENGL_ES2
 
@@ -2332,6 +2391,8 @@ void rlglClose(void)
     glDeleteTextures(1, &RLGL.State.defaultTextureId); // Unload default texture
     TRACELOG(RL_LOG_INFO, "TEXTURE: [ID %i] Default texture unloaded successfully", RLGL.State.defaultTextureId);
 #endif
+
+    rlDestoryContext(rlActiveContext);
 }
 
 // Load OpenGL extensions
