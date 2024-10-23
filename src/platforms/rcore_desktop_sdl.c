@@ -975,7 +975,7 @@ void SetGamepadVibration(int gamepad, float leftMotor, float rightMotor)
 
     if (IsGamepadAvailable(gamepad))
     {
-        SDL_JoystickRumble(platform.gamepad[gamepad], (Uint16)(leftMotor*65535.0f), (Uint16)(rightMotor*65535.0f), (Uint32)(MAX_GAMEPAD_VIBRATION_TIME*1000.0f));
+        SDL_JoystickRumble(platform[GetActiveWindowContext()].gamepad[gamepad], (Uint16)(leftMotor * 65535.0f), (Uint16)(rightMotor * 65535.0f), (Uint32)(MAX_GAMEPAD_VIBRATION_TIME * 1000.0f));
     }
 }
 
@@ -1014,8 +1014,8 @@ static void UpdateTouchPointsSDL(SDL_TouchFingerEvent event)
     {
         SDL_Finger *finger = SDL_GetTouchFinger(event.touchId, i);
         CORE.Input.Touch.pointId[i] = finger->id;
-        CORE.Input.Touch.position[i].x = finger->x*CORE.Window.screen.width;
-        CORE.Input.Touch.position[i].y = finger->y*CORE.Window.screen.height;
+        CORE.Input.Touch.position[i].x = finger->x * CORE.Window[GetActiveWindowContext()].screen.width;
+        CORE.Input.Touch.position[i].y = finger->y * CORE.Window[GetActiveWindowContext()].screen.height;
         CORE.Input.Touch.currentTouchState[i] = 1;
     }
 
@@ -1302,19 +1302,16 @@ void PollInputEvents(void)
 
                 if (!CORE.Input.Gamepad.ready[jid] && (jid < MAX_GAMEPADS))
                 {
-                    platform.gamepad[jid] = SDL_JoystickOpen(jid);
+                    platform[GetActiveWindowContext()].gamepad[jid] = SDL_JoystickOpen(jid);
 
-                    if (platform.gamepad[jid])
-                    {
+                    if (platform[GetActiveWindowContext()].gamepad[jid]) {
                         CORE.Input.Gamepad.ready[jid] = true;
-                        CORE.Input.Gamepad.axisCount[jid] = SDL_JoystickNumAxes(platform.gamepad[jid]);
+                        CORE.Input.Gamepad.axisCount[jid] = SDL_JoystickNumAxes(platform[GetActiveWindowContext()].gamepad[jid]);
                         CORE.Input.Gamepad.axisState[jid][GAMEPAD_AXIS_LEFT_TRIGGER] = -1.0f;
                         CORE.Input.Gamepad.axisState[jid][GAMEPAD_AXIS_RIGHT_TRIGGER] = -1.0f;
-                        strncpy(CORE.Input.Gamepad.name[jid], SDL_JoystickName(platform.gamepad[jid]), 63);
+                        strncpy(CORE.Input.Gamepad.name[jid], SDL_JoystickName(platform[GetActiveWindowContext()].gamepad[jid]), 63);
                         CORE.Input.Gamepad.name[jid][63] = '\0';
-                    }
-                    else
-                    {
+                    } else {
                         TRACELOG(LOG_WARNING, "PLATFORM: Unable to open game controller [ERROR: %s]", SDL_GetError());
                     }
                 }
@@ -1323,10 +1320,9 @@ void PollInputEvents(void)
             {
                 int jid = event.jdevice.which;
 
-                if (jid == SDL_JoystickInstanceID(platform.gamepad[jid]))
-                {
-                    SDL_JoystickClose(platform.gamepad[jid]);
-                    platform.gamepad[jid] = SDL_JoystickOpen(0);
+                if (jid == SDL_JoystickInstanceID(platform[GetActiveWindowContext()].gamepad[jid])) {
+                    SDL_JoystickClose(platform[GetActiveWindowContext()].gamepad[jid]);
+                    platform[GetActiveWindowContext()].gamepad[jid] = SDL_JoystickOpen(0);
                     CORE.Input.Gamepad.ready[jid] = false;
                     memset(CORE.Input.Gamepad.name[jid], 0, 64);
                 }
@@ -1572,11 +1568,23 @@ int InitPlatform(void)
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
     }
 
-    // Init window
-    platform[GetActiveWindowContext()].window = SDL_CreateWindow(CORE.Window[GetActiveWindowContext()].title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, CORE.Window[GetActiveWindowContext()].screen.width, CORE.Window[GetActiveWindowContext()].screen.height, flags);
+    // Make size full screen reported from monitor
+    CORE.Window[GetActiveWindowContext()].screen.width = GetMonitorWidth(GetActiveWindowContext());
+    CORE.Window[GetActiveWindowContext()].screen.height = GetMonitorHeight(GetActiveWindowContext());
 
-    // Init OpenGL context
-    platform[GetActiveWindowContext()].glContext = SDL_GL_CreateContext(platform[GetActiveWindowContext()].window);
+    // Init window
+    platform[GetActiveWindowContext()].window = SDL_CreateWindow(
+        CORE.Window[GetActiveWindowContext()].title,
+        SDL_WINDOWPOS_UNDEFINED_DISPLAY(GetActiveWindowContext()),
+        SDL_WINDOWPOS_UNDEFINED_DISPLAY(GetActiveWindowContext()),
+        CORE.Window[GetActiveWindowContext()].screen.width,
+        CORE.Window[GetActiveWindowContext()].screen.height,
+        0 /*flags*/);
+
+    //  Init OpenGL context
+    platform[GetActiveWindowContext()]
+        .glContext
+        = SDL_GL_CreateContext(platform[GetActiveWindowContext()].window);
 
     // Check window and glContext have been initialized successfully
     if ((platform[GetActiveWindowContext()].window != NULL) && (platform[GetActiveWindowContext()].glContext != NULL))
@@ -1616,7 +1624,7 @@ int InitPlatform(void)
     // Initialize gamepads
     for (int i = 0; (i < SDL_NumJoysticks()) && (i < MAX_GAMEPADS); i++)
     {
-        platform[GetActiveWindowContext()].gamepad = SDL_JoystickOpen(0);
+        platform[GetActiveWindowContext()].gamepad[i] = SDL_JoystickOpen(0);
         //if (platform[GetActiveWindowContext()].gamepadgamepad == NULL) TRACELOG(LOG_WARNING, "PLATFORM: Unable to open game controller [ERROR: %s]", SDL_GetError());
     }
 
