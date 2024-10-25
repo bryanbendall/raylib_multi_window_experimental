@@ -1156,7 +1156,7 @@ static void rlDestoryContext(int context)
                 if (RLGLDataHead)
                     rlActiveContext = RLGLDataHead->ContextId;
                 else
-                    rlActiveContext = NULL;
+                    rlActiveContext = 0; // NULL;
             }
 
             RL_FREE(data);
