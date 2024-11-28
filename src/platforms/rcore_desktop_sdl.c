@@ -1014,8 +1014,8 @@ static void UpdateTouchPointsSDL(SDL_TouchFingerEvent event)
     {
         SDL_Finger *finger = SDL_GetTouchFinger(event.touchId, i);
         CORE.Input.Touch.pointId[i] = finger->id;
-        CORE.Input.Touch.position[i].x = finger->x * CORE.Window[GetActiveWindowContext()].screen.width;
-        CORE.Input.Touch.position[i].y = finger->y * CORE.Window[GetActiveWindowContext()].screen.height;
+        CORE.Input.Touch.position[i].x = finger->x; //* CORE.Window[GetActiveWindowContext()].screen.width;
+        CORE.Input.Touch.position[i].y = finger->y; //* CORE.Window[GetActiveWindowContext()].screen.height;
         CORE.Input.Touch.currentTouchState[i] = 1;
     }
 
@@ -1052,7 +1052,7 @@ void PollInputEvents(void)
     for (int i = 0; i < MAX_TOUCH_POINTS; i++) CORE.Input.Touch.previousTouchState[i] = CORE.Input.Touch.currentTouchState[i];
 
     // Map touch position to mouse position for convenience
-    CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
+    // CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
 
     int touchAction = -1;       // 0-TOUCH_ACTION_UP, 1-TOUCH_ACTION_DOWN, 2-TOUCH_ACTION_MOVE
     bool realTouch = false;     // Flag to differentiate real touch gestures from mouse ones
@@ -1275,7 +1275,7 @@ void PollInputEvents(void)
                     CORE.Input.Mouse.currentPosition.y = (float)event.motion.y;
                 }
 
-                CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
+                // CORE.Input.Touch.position[0] = CORE.Input.Mouse.currentPosition;
                 touchAction = 2;
             } break;
 
